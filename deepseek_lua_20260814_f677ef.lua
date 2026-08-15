@@ -188,65 +188,105 @@ function CreateToggle(label, default, callback)
     return f
 end
 --[==[ GACF VIP - PHẦN 2/3 ]==]
-local hp = Instance.new("TextLabel")
-hp.Name = "HPLabel"
-hp.Size = UDim2.new(0,160,0,25)
-hp.BackgroundColor3 = Color3.fromRGB(0,0,0)
-hp.BackgroundTransparency = 0.3
-hp.Visible = false
-hp.ZIndex = 10
-hp.TextColor3 = C.Text
-hp.Font = Enum.Font.GothamBold
-hp.TextSize = 13
-hp.TextStrokeTransparency = 0
-hp.Parent = gui
-Instance.new("UICorner",hp).CornerRadius = UDim.new(0,5)
-local hps = Instance.new("UIStroke",hp)
-hps.Color = Color3.fromRGB(0,255,0)
-hps.Thickness = 2
-
 local aimEnabled = false
 local target = nil
-local glows = {}
-local cleaning = false
+local hpLabels = {} -- Lưu các BillBoardGui
 
-local function clearGlow()
-    if cleaning then return end
-    cleaning = true
-    pcall(function()
-        for i = #glows, 1, -1 do
-            pcall(function()
-                if glows[i] and glows[i].Parent then
-                    glows[i]:Destroy()
-                end
-            end)
-            glows[i] = nil
-        end
-        glows = {}
-    end)
-    cleaning = false
+-- Hàm tạo BillBoardGui hiển thị HP trên đầu mục tiêu
+local function createHPBar(character)
+    if not character then return end
+    
+    -- Xóa HP cũ nếu có
+    if hpLabels[character] then
+        hpLabels[character]:Destroy()
+        hpLabels[character] = nil
+    end
+    
+    local head = character:FindFirstChild("Head")
+    if not head then return end
+    
+    local billboard = Instance.new("BillboardGui")
+    billboard.Name = "TargetHP"
+    billboard.Size = UDim2.new(0, 200, 0, 30)
+    billboard.StudsOffset = Vector3.new(0, 3, 0)
+    billboard.MaxDistance = 100
+    billboard.Parent = head
+    
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(1, 0, 1, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    frame.BackgroundTransparency = 0.5
+    frame.Parent = billboard
+    Instance.new("UICorner",frame).CornerRadius = UDim.new(0, 4)
+    
+    local healthBar = Instance.new("Frame")
+    healthBar.Name = "HealthBar"
+    healthBar.Size = UDim2.new(1, -4, 0.7, 0)
+    healthBar.Position = UDim2.new(0, 2, 0.15, 0)
+    healthBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    healthBar.Parent = frame
+    Instance.new("UICorner",healthBar).CornerRadius = UDim.new(0, 2)
+    
+    local hpText = Instance.new("TextLabel")
+    hpText.Name = "HPText"
+    hpText.Size = UDim2.new(1, 0, 0.4, 0)
+    hpText.Position = UDim2.new(0, 0, 0.65, 0)
+    hpText.BackgroundTransparency = 1
+    hpText.TextColor3 = Color3.fromRGB(255, 255, 255)
+    hpText.Font = Enum.Font.GothamBold
+    hpText.TextSize = 12
+    hpText.Text = ""
+    hpText.Parent = frame
+    
+    hpLabels[character] = billboard
+    return billboard
 end
 
-local function addGlow(char)
-    if not char then clearGlow() return end
-    clearGlow()
-    pcall(function()
-        for _,p in pairs(char:GetChildren()) do
-            if p:IsA("BasePart") or p:IsA("MeshPart") then
-                pcall(function()
-                    local h = Instance.new("Highlight")
-                    h.Name = "TargetGlow"
-                    h.FillColor = Color3.fromRGB(0,255,0)
-                    h.OutlineColor = Color3.fromRGB(255,255,255)
-                    h.FillTransparency = 0.5
-                    h.OutlineTransparency = 0
-                    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                    h.Parent = p
-                    table.insert(glows, h)
-                end)
-            end
+-- Hàm cập nhật HP
+local function updateHP(character)
+    if not character then return end
+    local billboard = hpLabels[character]
+    if not billboard then return end
+    
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return end
+    
+    local healthBar = billboard:FindFirstChild("Frame") and billboard.Frame:FindFirstChild("HealthBar")
+    local hpText = billboard:FindFirstChild("Frame") and billboard.Frame:FindFirstChild("HPText")
+    
+    if healthBar and hpText then
+        local health = humanoid.Health
+        local maxHealth = humanoid.MaxHealth
+        local percent = health / maxHealth
+        
+        healthBar.Size = UDim2.new(math.clamp(percent, 0, 1), -4, 0.7, 0)
+        
+        if percent > 0.5 then
+            healthBar.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        elseif percent > 0.25 then
+            healthBar.BackgroundColor3 = Color3.fromRGB(255, 255, 0)
+        else
+            healthBar.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
         end
-    end)
+        
+        hpText.Text = math.floor(health) .. "/" .. math.floor(maxHealth)
+    end
+end
+
+-- Hàm xóa HP của mục tiêu
+local function removeHP(character)
+    if character and hpLabels[character] then
+        pcall(function() hpLabels[character]:Destroy() end)
+        hpLabels[character] = nil
+    end
+end
+
+-- Hàm xóa tất cả HP
+local function clearAllHP()
+    for char, billboard in pairs(hpLabels) do
+        pcall(function() billboard:Destroy() end)
+    end
+    hpLabels = {}
 end
 
 local function findTarget()
@@ -279,18 +319,30 @@ spawn(function()
             pcall(function()
                 local char = player.Character
                 local t = findTarget()
+                
+                -- Xóa HP của target cũ
+                if target and target ~= t then
+                    removeHP(target)
+                end
+                
                 if t ~= target then
                     target = t
-                    addGlow(t)
+                    if target then
+                        createHPBar(target)
+                    end
                 end
+                
+                -- Cập nhật HP
                 if target then
                     local h = target:FindFirstChild("Humanoid")
                     if not h or h.Health <= 0 then
+                        removeHP(target)
                         target = nil
-                        clearGlow()
-                        hp.Visible = false
+                    else
+                        updateHP(target)
                     end
                 end
+                
                 if char and char:FindFirstChild("HumanoidRootPart") and target and target:FindFirstChild("HumanoidRootPart") then
                     local root = char.HumanoidRootPart
                     local dir = (target.HumanoidRootPart.Position - root.Position).Unit
@@ -302,58 +354,22 @@ spawn(function()
             end)
         else
             if target then
+                removeHP(target)
                 target = nil
-                clearGlow()
-                hp.Visible = false
             end
         end
         task.wait()
     end
 end)
 
-RunService.RenderStepped:Connect(function()
-    if aimEnabled and target then
-        pcall(function()
-            if target and target:FindFirstChild("HumanoidRootPart") and target:FindFirstChild("Humanoid") then
-                if target.Humanoid.Health <= 0 then
-                    hp.Visible = false
-                    return
-                end
-                local head = target:FindFirstChild("Head")
-                local pos = head and head.Position + Vector3.new(0,2,0) or target.HumanoidRootPart.Position + Vector3.new(0,3,0)
-                local sp, on = Camera:WorldToViewportPoint(pos)
-                if on then
-                    hp.Visible = true
-                    hp.Position = UDim2.new(0, sp.X - 80, 0, sp.Y - 40)
-                    local h = math.floor(target.Humanoid.Health)
-                    local mx = math.floor(target.Humanoid.MaxHealth)
-                    local pc = target.Humanoid.Health / target.Humanoid.MaxHealth
-                    hp.Text = target.Parent.Name .. " " .. h .. "/" .. mx .. " HP"
-                    if pc > 0.5 then
-                        hps.Color = Color3.fromRGB(0,255,0)
-                    elseif pc > 0.25 then
-                        hps.Color = Color3.fromRGB(255,255,0)
-                    else
-                        hps.Color = Color3.fromRGB(255,0,0)
-                    end
-                else
-                    hp.Visible = false
-                end
-            else
-                hp.Visible = false
-            end
-        end)
-    else
-        hp.Visible = false
-    end
-end)
-
 CreateToggle("Silent Aim 🎯", false, function(s)
     aimEnabled = s
     if not s then
-        target = nil
-        clearGlow()
-        hp.Visible = false
+        if target then
+            removeHP(target)
+            target = nil
+        end
+        clearAllHP()
     end
 end)
 
@@ -361,11 +377,13 @@ local skillTele = false
 local m1Tele = false
 local oldHook = nil
 
-local function teleport()
+local function teleportBehind(distance)
     local char = player.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     if target and target:FindFirstChild("HumanoidRootPart") then
-        char.HumanoidRootPart.CFrame = CFrame.new(target.HumanoidRootPart.Position - (target.HumanoidRootPart.CFrame.LookVector * 1))
+        local targetRoot = target.HumanoidRootPart
+        local behindPos = targetRoot.Position - (targetRoot.CFrame.LookVector * distance)
+        char.HumanoidRootPart.CFrame = CFrame.new(behindPos)
     end
 end
 
@@ -380,10 +398,10 @@ local function startHook()
                 if #args >= 1 and type(args[1]) == "table" then
                     local data = args[1]
                     if skillTele and data["Request"] == "Skill" and data["Number"] == "2" then
-                        task.spawn(teleport)
+                        task.spawn(function() teleportBehind(1) end)
                     end
                     if m1Tele and data["Request"] == "M1Up" then
-                        task.spawn(teleport)
+                        task.spawn(function() teleportBehind(3) end)
                     end
                 end
             end)
@@ -490,21 +508,19 @@ player.CharacterRemoving:Connect(function()
     pcall(function()
         stopHook()
         target = nil
-        hp.Visible = false
-        clearGlow()
+        clearAllHP()
     end)
 end)
 
 player.CharacterAdded:Connect(function()
     pcall(function()
         target = nil
-        clearGlow()
-        hp.Visible = false
+        clearAllHP()
     end)
 end)
 
 game:BindToClose(function()
-    pcall(clearGlow)
+    pcall(clearAllHP)
 end)
 
 print("GACF VIP Loaded Successfully!")
