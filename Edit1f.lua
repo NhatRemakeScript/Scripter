@@ -1,3 +1,4 @@
+--[==[ GACF UI FRAMEWORK - PHẦN 1/5 ]==]
 local GACF = {}
 
 -- ================== SERVICES ==================
@@ -43,7 +44,7 @@ local buttons = {}
 local sliders = {}
 local menuTitle = "GACF VIP"
 local isAnimating = false
-
+--[==[ GACF UI FRAMEWORK - PHẦN 2/5 ]==]
 -- ================== TẠO UI ==================
 function GACF:CreateUI(title)
     menuTitle = title or "GACF VIP"
@@ -202,7 +203,7 @@ function GACF:CreateUI(title)
     
     return self
 end
-
+--[==[ GACF UI FRAMEWORK - PHẦN 3/5 ]==]
 -- ================== TẠO TOGGLE BUTTON ==================
 function GACF:CreateToggleButton()
     toggleButton = Instance.new("ImageButton")
@@ -315,7 +316,7 @@ function GACF:CreateToggleButton()
         end
     end)
 end
-
+--[==[ GACF UI FRAMEWORK - PHẦN 4/5 ]==]
 -- ================== TẠO TOGGLE ==================
 function GACF:AddToggle(label, icon, default, callback)
     local container = Instance.new("Frame")
@@ -529,4 +530,142 @@ function GACF:AddSlider(label, icon, min, max, default, callback)
     slider.Parent = container
     Instance.new("UICorner", slider).CornerRadius = UDim.new(0, 2)
     
-    local fill 
+    local fill = Instance.new("Frame")
+    fill.Size = UDim2.new((default or 0) / max, 0, 1, 0)
+    fill.BackgroundColor3 = COLORS.Accent
+    fill.Parent = slider
+    Instance.new("UICorner", fill).CornerRadius = UDim.new(0, 2)
+    
+    local drag = Instance.new("TextButton")
+    drag.Size = UDim2.new(0, 16, 0, 16)
+    drag.Position = UDim2.new((default or 0) / max, -8, 0.5, -8)
+    drag.BackgroundColor3 = COLORS.Knob
+    drag.Text = ""
+    drag.Parent = container
+    Instance.new("UICorner", drag).CornerRadius = UDim.new(1, 0)
+    
+    -- Glow for drag knob
+    local knobGlow = Instance.new("Frame")
+    knobGlow.Size = UDim2.new(1.5, 0, 1.5, 0)
+    knobGlow.Position = UDim2.new(-0.25, 0, -0.25, 0)
+    knobGlow.BackgroundColor3 = COLORS.Accent
+    knobGlow.BackgroundTransparency = 0.85
+    knobGlow.Parent = drag
+    Instance.new("UICorner", knobGlow).CornerRadius = UDim.new(1, 0)
+    
+    local currentValue = default or 0
+    local dragging = false
+    
+    local function updateSlider(mouseX)
+        local containerPos = slider.AbsolutePosition.X
+        local containerWidth = slider.AbsoluteSize.X
+        if containerWidth <= 0 then return end
+        local percent = math.clamp((mouseX - containerPos) / containerWidth, 0, 1)
+        currentValue = math.floor(min + (max - min) * percent)
+        
+        fill.Size = UDim2.new(percent, 0, 1, 0)
+        drag.Position = UDim2.new(percent, -8, 0.5, -8)
+        valueText.Text = tostring(currentValue)
+        
+        if callback then callback(currentValue) end
+    end
+    
+    drag.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = true
+            updateSlider(input.Position.X)
+        end
+    end)
+    
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            updateSlider(input.Position.X)
+        end
+    end)
+    
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            dragging = false
+        end
+    end)
+    
+    table.insert(sliders, {container = container, value = currentValue, callback = callback})
+    return container
+end
+--[==[ GACF UI FRAMEWORK - PHẦN 5/5 ]==]
+-- ================== TẠO SEPARATOR ==================
+function GACF:AddSeparator()
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(0.9, 0, 0, 20)
+    container.BackgroundTransparency = 1
+    container.Parent = scrollFrame
+    
+    local line = Instance.new("Frame")
+    line.Size = UDim2.new(1, 0, 0, 1)
+    line.Position = UDim2.new(0, 0, 0.5, 0)
+    line.BackgroundColor3 = COLORS.Border
+    line.BackgroundTransparency = 0.7
+    line.Parent = container
+    Instance.new("UICorner", line).CornerRadius = UDim.new(0, 1)
+    
+    return container
+end
+
+-- ================== TẠO LABEL ==================
+function GACF:AddLabel(text, icon)
+    local container = Instance.new("Frame")
+    container.Size = UDim2.new(1, -6, 0, 30)
+    container.BackgroundTransparency = 1
+    container.Parent = scrollFrame
+    
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, 0, 1, 0)
+    label.BackgroundTransparency = 1
+    label.Text = (icon or "") .. " " .. text
+    label.TextColor3 = COLORS.TextDim
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 12
+    label.TextXAlignment = Enum.TextXAlignment.Center
+    label.Parent = container
+    
+    return container
+end
+
+-- ================== HÀM DỌN DẸP ==================
+function GACF:Destroy()
+    pcall(function()
+        if screenGui then screenGui:Destroy() end
+        screenGui = nil
+        mainFrame = nil
+        scrollFrame = nil
+        toggleButton = nil
+        toggles = {}
+        buttons = {}
+        sliders = {}
+    end)
+end
+
+-- ================== GET STATE ==================
+function GACF:GetToggleState(index)
+    if toggles[index] then
+        return toggles[index].state
+    end
+    return false
+end
+
+-- ================== SET TITLE ==================
+function GACF:SetTitle(title)
+    menuTitle = title
+    if screenGui then
+        local titleBar = screenGui:FindFirstChild("MainFrame") and screenGui.MainFrame:FindFirstChild("TitleBar")
+        if titleBar then
+            local titleText = titleBar:FindFirstChild("TextLabel")
+            if titleText then
+                titleText.Text = "✦ " .. title
+            end
+        end
+    end
+end
+
+-- ================== KHỞI TẠO ==================
+return GACF
