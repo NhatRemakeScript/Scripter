@@ -10,10 +10,12 @@ local Pathfinding = game:GetService("PathfindingService")
 local LP = P.LocalPlayer
 local PG = LP:WaitForChild("PlayerGui")
 
-local IL = {"desert","fossil","jungle","snow","starter","volcano"}
+local ISLAND_ORDER = {"starter","jungle","desert","snow","volcano","fossil"}
+local ISLAND_DISPLAY = {"Starter","Jungle","Desert","Snow","Volcano","Fossil"}
+local ISLAND_LABELS = {starter="Starter", jungle="Jungle", desert="Desert", snow="Snow", volcano="Volcano", fossil="Fossil"}
+
 local SF = "DNHub_Settings.json"
 local SPOTF = "DNHub_Spot.json"
-local AEF = "https://raw.githubusercontent.com/NhatRemakeScript/Roblox/refs/heads/main/Aoaoowbeeuua.lua"
 
 local MAIN_PARTS = {"HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso", "Head"}
 
@@ -26,8 +28,8 @@ local def = {
 	liteGfx=false, autoLock=false, autoReturn=false,
 	lockRarity={Legendary=true, Mythical=true, Divine=true},
 	skillOrder={1,2,1,3},
-	sellInt=300, island="snow", teleMode="fast",
-	autoExec=false, customName="DNHub",
+	sellInt=300, island="starter", teleMode="fast",
+	customName="DNHub",
 	tagColorR=0.7, tagColorG=0.4, tagColorB=1.0, tagRainbow=false
 }
 
@@ -73,7 +75,7 @@ for k,v in pairs(sv) do
 		st[k] = v
 	end
 end
-local island = st.island or "snow"
+local island = st.island or "starter"
 local sellInt = st.sellInt or 300
 local teleMode = st.teleMode or "fast"
 local customName = st.customName or "DNHub"
@@ -90,14 +92,13 @@ local function save()
 			liteGfx=st.liteGfx, autoLock=st.autoLock, autoReturn=st.autoReturn,
 			lockRarity=st.lockRarity, skillOrder=st.skillOrder,
 			sellInt=sellInt, island=island, teleMode=teleMode,
-			autoExec=st.autoExec, customName=customName,
+			customName=customName,
 			tagColorR=st.tagColorR, tagColorG=st.tagColorG, tagColorB=st.tagColorB,
 			tagRainbow=st.tagRainbow
 		}))
 	end)
 end
 
--- ============ CLIENT / CONTROLLERS ============
 local Client, Catalog
 pcall(function()
 	local sd = RS:FindFirstChild("Stardust")
@@ -120,7 +121,6 @@ local function getController(name)
 	return nil
 end
 
--- ============ SAVE / RESTORE CHAR (chỉ part chính) ============
 local function saveState()
 	local c = LP.Character
 	if not c then return nil end
@@ -140,7 +140,6 @@ end
 local function hardRestore(savedCharacter, saved)
 	local cur = LP.Character
 	if cur then
-		-- Chỉ restore part trong saved.cc — không touch part khác
 		if saved and saved.cc then
 			for p, cc in pairs(saved.cc) do
 				if p and p.Parent then
@@ -166,13 +165,10 @@ local function hardRestore(savedCharacter, saved)
 	end
 end
 
--- ============ TWEEN ============
 local Tweening = false
 
-local function tSpeed() return teleMode=="fast" and 70 or 40 end
-
 local function tweenTo(cf, spd)
-	spd = spd or tSpeed()
+	spd = spd or 40
 
 	if Tweening then
 		local timeout = tick() + 10
@@ -207,7 +203,6 @@ local function tweenTo(cf, spd)
 			return
 		end
 
-		-- Noclip: chỉ uncollide part chính
 		local nc = Run.Stepped:Connect(function()
 			local cur = LP.Character
 			if cur and cur == savedCharacter then
@@ -235,17 +230,12 @@ local function tweenTo(cf, spd)
 			task.wait(0.03)
 		end
 
-		if nc then
-			nc:Disconnect()
-			nc = nil
-		end
+		if nc then nc:Disconnect() nc = nil end
 
 		local c3 = LP.Character
 		if c3 and c3 == savedCharacter then
 			local h3 = c3:FindFirstChild("HumanoidRootPart")
-			if h3 then
-				h3.CFrame = CFrame.new(tP) * sR
-			end
+			if h3 then h3.CFrame = CFrame.new(tP) * sR end
 		end
 
 		hardRestore(savedCharacter, saved)
@@ -257,8 +247,6 @@ local function tweenTo(cf, spd)
 
 	Tweening = false
 end
-
--- ============ WALK ============
 local function walkTo(goal, stopAt, timeout, alive)
 	local c = LP.Character
 	local h = c and c:FindFirstChildOfClass("Humanoid")
@@ -306,7 +294,6 @@ local function walkTo(goal, stopAt, timeout, alive)
 	return false
 end
 
--- ============ AUTO MINIGAME ============
 local function vis(i)
 	if not i.Visible or i.AbsoluteSize.X<=0 or i.AbsoluteSize.Y<=0 then return false end
 	local p = i.Parent
@@ -349,7 +336,6 @@ local function scanMini()
 	if f.U then if not uiS.U then uiS.U=n end if n-uiS.U>=0.2 then sKey(Enum.KeyCode.W) uiS.U=nil end else uiS.U=nil end
 end
 
--- ============ INPUT PRESS ============
 local function lastHandler(sig)
 	local fn
 	if not getconnections then return nil end
@@ -373,7 +359,6 @@ local function tap(action, hold)
 	release(action)
 end
 
--- ============ ROD ============
 local function heldRodId()
 	local c = LP.Character
 	if not c then return nil end
@@ -439,7 +424,6 @@ local function equipAnyRod()
 	return equipRod(best)
 end
 
--- ============ SKILL ============
 local SKILL_SLOTS = 4
 local SlotPhase = {}
 local SkillCycle = {index = 1}
@@ -505,130 +489,6 @@ local function castSkill()
 	end
 	return false
 end
-
--- ============ FISHING LOOP ============
-local Fish = {
-	dead = false,
-	running = false,
-	farm = false,
-	firstPullDone = false,
-	lastState = nil,
-	lastCast = 0,
-	lastSkill = 0,
-	lastEquip = 0,
-	CAST_HOLD = 0.65,
-	TAP_HOLD = 0.045,
-	MIN_CAST_GAP = 0.7,
-	SKILL_SPACING = 0.35,
-	EQUIP_DELAY = 0.35,
-	FIRST_PULL_TARGET = 0.96,
-}
-
-local function runFishLoop()
-	Fish.running = true
-	Fish.dead = false
-	while not Fish.dead do
-		if not Fish.farm then task.wait(0.2) continue end
-		if Tweening then task.wait(0.1) continue end
-		if not LP.Character then task.wait(0.2) continue end
-		if not heldRodId() and os.clock() - Fish.lastEquip >= Fish.EQUIP_DELAY then
-			Fish.lastEquip = os.clock()
-			if equipAnyRod() then task.wait(Fish.EQUIP_DELAY) end
-		end
-		local f = getController("FishingController")
-		if not f then task.wait(0.25) continue end
-		local ok, state = pcall(function() return f:GetState() end)
-		if not ok then task.wait(0.1) continue end
-		if state ~= Fish.lastState then
-			if state == "FirstPull" then Fish.firstPullDone = false end
-			Fish.lastState = state
-		end
-		if state == "Idling" then
-			if os.clock() - Fish.lastCast >= Fish.MIN_CAST_GAP then
-				Fish.lastCast = os.clock()
-				local ctx = RS:FindFirstChild("Inputs")
-				local fc = ctx and ctx:FindFirstChild("FishingContext")
-				local action = fc and fc:FindFirstChild("FishingPrimary")
-				if action then tap(action, Fish.CAST_HOLD) end
-			else
-				task.wait(0.05)
-			end
-		elseif state == "FirstPull" then
-			local okV, value = pcall(function() return f:GetPullBarValue() end)
-			if okV and not Fish.firstPullDone and value >= Fish.FIRST_PULL_TARGET then
-				Fish.firstPullDone = true
-				local ctx = RS:FindFirstChild("Inputs")
-				local fc = ctx and ctx:FindFirstChild("FishingContext")
-				local action = fc and fc:FindFirstChild("FishingPrimary")
-				if action then tap(action, Fish.TAP_HOLD) end
-			else
-				task.wait()
-			end
-		elseif state == "Reeling" then
-			if st.skill and os.clock() - Fish.lastSkill >= Fish.SKILL_SPACING and LP:GetAttribute("IsUsingSkill") ~= true then
-				if castSkill() then Fish.lastSkill = os.clock() end
-			end
-			local okAuto, isAuto = pcall(function() return f:IsAutoSession() end)
-			if okAuto and isAuto then
-				task.wait(0.05)
-			else
-				local ctx = RS:FindFirstChild("Inputs")
-				local fc = ctx and ctx:FindFirstChild("FishingContext")
-				local action = fc and fc:FindFirstChild("FishingPrimary")
-				if action then tap(action, Fish.TAP_HOLD) end
-			end
-		else
-			task.wait(0.05)
-		end
-	end
-	Fish.running = false
-end
-
-local minigameTask
-local function startFish()
-	Fish.farm = true
-	if not Fish.running then task.spawn(runFishLoop) end
-	if not minigameTask then
-		minigameTask = task.spawn(function()
-			while st.bypass or st.fish do
-				scanMini()
-				task.wait(0.05)
-			end
-			minigameTask = nil
-		end)
-	end
-end
-
-local function stopFish()
-	Fish.farm = false
-end
-
--- ============ SPEED ============
-local function applySpeed(v)
-	st.speed = v
-	local c = LP.Character
-	if st.speedOn and c then
-		local hu = c:FindFirstChildOfClass("Humanoid")
-		if hu and hu.Health > 0 then
-			hu.WalkSpeed = v
-		end
-	end
-	save()
-end
-
-local function enableSpeed(on)
-	st.speedOn = on
-	local c = LP.Character
-	if c then
-		local hu = c:FindFirstChildOfClass("Humanoid")
-		if hu and hu.Health > 0 then
-			hu.WalkSpeed = on and st.speed or 16
-		end
-	end
-	save()
-end
-
--- ============ SPOT ============
 local Spot = {cframe=nil, radius=14}
 
 local function saveSpotFile()
@@ -688,7 +548,6 @@ local function returnToSpot()
 	end)
 end
 
--- ============ FIND NPC ============
 local function findNPC()
 	local c = LP.Character
 	if not c or not c:FindFirstChild("HumanoidRootPart") then return nil end
@@ -720,170 +579,6 @@ local function sellAll()
 	return true, coin or 0, count or 0
 end
 
--- ============ AUTO LOCK ============
-local LockState = {sent={}, busy=false, at=0}
-
-local RARITY_ORDER = {"Common","Uncommon","Rare","Epic","Legendary","Mythical","Divine","Secret","Exotic"}
-
-local function getRarityList()
-	local rarities = {}
-	local seen = {}
-	pcall(function()
-		if Catalog and Catalog.Fish and Catalog.Fish.GetAll then
-			for _, e in pairs(Catalog.Fish.GetAll()) do
-				if type(e) == "table" and type(e.rarity) == "string" then
-					if not seen[e.rarity] then
-						seen[e.rarity] = true
-						table.insert(rarities, e.rarity)
-					end
-				end
-			end
-		end
-	end)
-	if #rarities == 0 then
-		rarities = {"Common","Uncommon","Rare","Epic","Legendary","Mythical","Divine"}
-	end
-	table.sort(rarities, function(a,b)
-		local ia, ib
-		for i, v in ipairs(RARITY_ORDER) do
-			if v == a then ia = i end
-			if v == b then ib = i end
-		end
-		return (ia or 99) < (ib or 99)
-	end)
-	return rarities
-end
-
-local function autoLockPass()
-	if LockState.busy then return end
-	LockState.busy = true
-	task.spawn(function()
-		local profile = fetchProfile()
-		local fishes = profile and profile.Inventory and profile.Inventory.Fishes
-		if type(fishes) ~= "table" then LockState.busy=false return end
-		local sell = getController("SellController")
-		if not sell then LockState.busy=false return end
-
-		local wantRarity = {}
-		local hasAny = false
-		if type(st.lockRarity) == "table" then
-			for r, v in pairs(st.lockRarity) do
-				if v == true then
-					wantRarity[r] = true
-					hasAny = true
-				end
-			end
-		end
-		if not hasAny then LockState.busy=false return end
-
-		local rarityOf = {}
-		pcall(function()
-			if Catalog and Catalog.Fish and Catalog.Fish.GetAll then
-				for _, e in pairs(Catalog.Fish.GetAll()) do
-					if type(e)=="table" then rarityOf[e.id or e.Id] = e.rarity end
-				end
-			end
-		end)
-
-		local queue = {}
-		local now = os.clock()
-		for uid, fish in pairs(fishes) do
-			if type(fish)=="table" and fish.locked ~= true then
-				local r = fish.rarity or rarityOf[fish.fishId]
-				if r and wantRarity[r] then
-					if not LockState.sent[uid] or now - LockState.sent[uid] > 20 then
-						table.insert(queue, uid)
-					end
-				end
-			end
-		end
-
-		for i = 1, math.min(#queue, 12) do
-			local uid = queue[i]
-			LockState.sent[uid] = now
-			pcall(function() sell:ToggleLock(uid) end)
-			task.wait(0.15)
-		end
-		LockState.busy = false
-		LockState.at = os.clock()
-	end)
-end
-
--- ============ LITE GRAPHICS ============
-local LiteBackup = nil
-
-local function setLite(want)
-	local L = game:GetService("Lighting")
-	if want then
-		if not LiteBackup then
-			LiteBackup = {effects={},shadows=L.GlobalShadows,diffuse=L.EnvironmentDiffuseScale,specular=L.EnvironmentSpecularScale,atmos={},clouds={}}
-			for _, e in ipairs(L:GetChildren()) do
-				if e:IsA("PostEffect") then LiteBackup.effects[e.Name] = e.Enabled end
-				if e:IsA("Atmosphere") then LiteBackup.atmos = {density=e.Density,offset=e.Offset,haze=e.Haze,glare=e.Glare} end
-				if e:IsA("Clouds") then LiteBackup.clouds = {cover=e.Cover,density=e.Density} end
-			end
-		end
-		pcall(function()
-			L.GlobalShadows=false
-			L.EnvironmentDiffuseScale=0
-			L.EnvironmentSpecularScale=0
-		end)
-		for _, e in ipairs(L:GetChildren()) do
-			if e:IsA("PostEffect") then pcall(function() e.Enabled=false end)
-			elseif e:IsA("Atmosphere") then pcall(function() e.Density=0 e.Offset=0 e.Haze=0 e.Glare=0 end)
-			elseif e:IsA("Clouds") then pcall(function() e.Cover=0 e.Density=0 end) end
-		end
-		task.spawn(function()
-			for _, inst in ipairs(workspace:GetDescendants()) do
-				pcall(function()
-					if inst:IsA("ParticleEmitter") then
-						inst.Enabled=false inst.Rate=0
-					elseif inst:IsA("Beam") or inst:IsA("Trail") then
-						inst.Enabled=false
-					elseif inst:IsA("PointLight") or inst:IsA("SurfaceLight") or inst:IsA("SpotLight") then
-						inst.Enabled=false
-					elseif inst:IsA("Highlight") and inst.Name ~= "DNHubBossEsp" and inst.Name ~= "DNHubNameTag" then
-						inst.Enabled=false
-					elseif inst:IsA("Fire") or inst:IsA("Smoke") or inst:IsA("Sparkles") then
-						inst.Enabled=false
-					end
-				end)
-				task.wait()
-			end
-		end)
-		st.liteGfx = true
-	else
-		if LiteBackup then
-			pcall(function()
-				L.GlobalShadows = LiteBackup.shadows
-				L.EnvironmentDiffuseScale = LiteBackup.diffuse
-				L.EnvironmentSpecularScale = LiteBackup.specular
-			end)
-			for _, e in ipairs(L:GetChildren()) do
-				if e:IsA("PostEffect") and LiteBackup.effects[e.Name] ~= nil then
-					pcall(function() e.Enabled = LiteBackup.effects[e.Name] end)
-				elseif e:IsA("Atmosphere") and next(LiteBackup.atmos) then
-					pcall(function()
-						e.Density = LiteBackup.atmos.density
-						e.Offset = LiteBackup.atmos.offset
-						e.Haze = LiteBackup.atmos.haze
-						e.Glare = LiteBackup.atmos.glare
-					end)
-				elseif e:IsA("Clouds") and next(LiteBackup.clouds) then
-					pcall(function()
-						e.Cover = LiteBackup.clouds.cover
-						e.Density = LiteBackup.clouds.density
-					end)
-				end
-			end
-			LiteBackup = nil
-		end
-		st.liteGfx = false
-	end
-	save()
-end
-
--- ============ SELL ============
 local function doSell()
 	local wf = st.fish
 	if wf then Fish.farm = false task.wait(0.3) end
@@ -970,7 +665,301 @@ local function startAutoFull()
 	end)
 end
 
--- ============ ISLAND TELE ============
+local function applySpeed(v)
+	st.speed = v
+	local c = LP.Character
+	if st.speedOn and c then
+		local hu = c:FindFirstChildOfClass("Humanoid")
+		if hu and hu.Health > 0 then
+			hu.WalkSpeed = v
+		end
+	end
+	save()
+end
+
+local function enableSpeed(on)
+	st.speedOn = on
+	local c = LP.Character
+	if c then
+		local hu = c:FindFirstChildOfClass("Humanoid")
+		if hu and hu.Health > 0 then
+			hu.WalkSpeed = on and st.speed or 16
+		end
+	end
+	save()
+end
+
+-- Kiểm tra lệch spot trước khi cast
+local function checkSpotBeforeCast()
+	if not Spot.cframe then return true end
+	local ok = atSpot()
+	if ok then return true end
+	Fish.farm = false
+	returnToSpot()
+	task.wait(0.5)
+	local timeout = tick() + 20
+	while tick() < timeout do
+		local ok2 = atSpot()
+		if ok2 then break end
+		task.wait(0.2)
+	end
+	Fish.farm = true
+	return false
+end
+
+local Fish = {
+	dead = false,
+	running = false,
+	farm = false,
+	firstPullDone = false,
+	lastState = nil,
+	lastCast = 0,
+	lastSkill = 0,
+	lastEquip = 0,
+	CAST_HOLD = 0.65,
+	TAP_HOLD = 0.045,
+	MIN_CAST_GAP = 0.7,
+	SKILL_SPACING = 0.35,
+	EQUIP_DELAY = 0.35,
+	FIRST_PULL_TARGET = 0.96,
+}
+
+local function runFishLoop()
+	Fish.running = true
+	Fish.dead = false
+	while not Fish.dead do
+		if not Fish.farm then task.wait(0.2) continue end
+		if Tweening then task.wait(0.1) continue end
+		if not LP.Character then task.wait(0.2) continue end
+		if not heldRodId() and os.clock() - Fish.lastEquip >= Fish.EQUIP_DELAY then
+			Fish.lastEquip = os.clock()
+			if equipAnyRod() then task.wait(Fish.EQUIP_DELAY) end
+		end
+		local f = getController("FishingController")
+		if not f then task.wait(0.25) continue end
+		local ok, state = pcall(function() return f:GetState() end)
+		if not ok then task.wait(0.1) continue end
+		if state ~= Fish.lastState then
+			if state == "FirstPull" then Fish.firstPullDone = false end
+			Fish.lastState = state
+		end
+		if state == "Idling" then
+			if not checkSpotBeforeCast() then
+				task.wait(0.3)
+			elseif os.clock() - Fish.lastCast >= Fish.MIN_CAST_GAP then
+				Fish.lastCast = os.clock()
+				local ctx = RS:FindFirstChild("Inputs")
+				local fc = ctx and ctx:FindFirstChild("FishingContext")
+				local action = fc and fc:FindFirstChild("FishingPrimary")
+				if action then tap(action, Fish.CAST_HOLD) end
+			else
+				task.wait(0.05)
+			end
+		elseif state == "FirstPull" then
+			local okV, value = pcall(function() return f:GetPullBarValue() end)
+			if okV and not Fish.firstPullDone and value >= Fish.FIRST_PULL_TARGET then
+				Fish.firstPullDone = true
+				local ctx = RS:FindFirstChild("Inputs")
+				local fc = ctx and ctx:FindFirstChild("FishingContext")
+				local action = fc and fc:FindFirstChild("FishingPrimary")
+				if action then tap(action, Fish.TAP_HOLD) end
+			else
+				task.wait()
+			end
+		elseif state == "Reeling" then
+			if st.skill and os.clock() - Fish.lastSkill >= Fish.SKILL_SPACING and LP:GetAttribute("IsUsingSkill") ~= true then
+				if castSkill() then Fish.lastSkill = os.clock() end
+			end
+			local okAuto, isAuto = pcall(function() return f:IsAutoSession() end)
+			if okAuto and isAuto then
+				task.wait(0.05)
+			else
+				local ctx = RS:FindFirstChild("Inputs")
+				local fc = ctx and ctx:FindFirstChild("FishingContext")
+				local action = fc and fc:FindFirstChild("FishingPrimary")
+				if action then tap(action, Fish.TAP_HOLD) end
+			end
+		else
+			task.wait(0.05)
+		end
+	end
+	Fish.running = false
+end
+
+local minigameTask
+local function startFish()
+	Fish.farm = true
+	if not Fish.running then task.spawn(runFishLoop) end
+	if not minigameTask then
+		minigameTask = task.spawn(function()
+			while st.bypass or st.fish do
+				scanMini()
+				task.wait(0.05)
+			end
+			minigameTask = nil
+		end)
+	end
+end
+
+local function stopFish()
+	Fish.farm = false
+end
+
+local LockState = {sent={}, busy=false, at=0}
+local RARITY_ORDER = {"Common","Uncommon","Rare","Epic","Legendary","Mythical","Divine","Secret","Exotic"}
+
+local function getRarityList()
+	local rarities = {}
+	local seen = {}
+	pcall(function()
+		if Catalog and Catalog.Fish and Catalog.Fish.GetAll then
+			for _, e in pairs(Catalog.Fish.GetAll()) do
+				if type(e) == "table" and type(e.rarity) == "string" then
+					if not seen[e.rarity] then
+						seen[e.rarity] = true
+						table.insert(rarities, e.rarity)
+					end
+				end
+			end
+		end
+	end)
+	if #rarities == 0 then
+		rarities = {"Common","Uncommon","Rare","Epic","Legendary","Mythical","Divine"}
+	end
+	table.sort(rarities, function(a,b)
+		local ia, ib
+		for i, v in ipairs(RARITY_ORDER) do
+			if v == a then ia = i end
+			if v == b then ib = i end
+		end
+		return (ia or 99) < (ib or 99)
+	end)
+	return rarities
+end
+
+local function autoLockPass()
+	if LockState.busy then return end
+	LockState.busy = true
+	task.spawn(function()
+		local profile = fetchProfile()
+		local fishes = profile and profile.Inventory and profile.Inventory.Fishes
+		if type(fishes) ~= "table" then LockState.busy=false return end
+		local sell = getController("SellController")
+		if not sell then LockState.busy=false return end
+		local wantRarity = {}
+		local hasAny = false
+		if type(st.lockRarity) == "table" then
+			for r, v in pairs(st.lockRarity) do
+				if v == true then
+					wantRarity[r] = true
+					hasAny = true
+				end
+			end
+		end
+		if not hasAny then LockState.busy=false return end
+		local rarityOf = {}
+		pcall(function()
+			if Catalog and Catalog.Fish and Catalog.Fish.GetAll then
+				for _, e in pairs(Catalog.Fish.GetAll()) do
+					if type(e)=="table" then rarityOf[e.id or e.Id] = e.rarity end
+				end
+			end
+		end)
+		local queue = {}
+		local now = os.clock()
+		for uid, fish in pairs(fishes) do
+			if type(fish)=="table" and fish.locked ~= true then
+				local r = fish.rarity or rarityOf[fish.fishId]
+				if r and wantRarity[r] then
+					if not LockState.sent[uid] or now - LockState.sent[uid] > 20 then
+						table.insert(queue, uid)
+					end
+				end
+			end
+		end
+		for i = 1, math.min(#queue, 12) do
+			local uid = queue[i]
+			LockState.sent[uid] = now
+			pcall(function() sell:ToggleLock(uid) end)
+			task.wait(0.15)
+		end
+		LockState.busy = false
+		LockState.at = os.clock()
+	end)
+end
+local LiteBackup = nil
+
+local function setLite(want)
+	local L = game:GetService("Lighting")
+	if want then
+		if not LiteBackup then
+			LiteBackup = {effects={},shadows=L.GlobalShadows,diffuse=L.EnvironmentDiffuseScale,specular=L.EnvironmentSpecularScale,atmos={},clouds={}}
+			for _, e in ipairs(L:GetChildren()) do
+				if e:IsA("PostEffect") then LiteBackup.effects[e.Name] = e.Enabled end
+				if e:IsA("Atmosphere") then LiteBackup.atmos = {density=e.Density,offset=e.Offset,haze=e.Haze,glare=e.Glare} end
+				if e:IsA("Clouds") then LiteBackup.clouds = {cover=e.Cover,density=e.Density} end
+			end
+		end
+		pcall(function()
+			L.GlobalShadows=false
+			L.EnvironmentDiffuseScale=0
+			L.EnvironmentSpecularScale=0
+		end)
+		for _, e in ipairs(L:GetChildren()) do
+			if e:IsA("PostEffect") then pcall(function() e.Enabled=false end)
+			elseif e:IsA("Atmosphere") then pcall(function() e.Density=0 e.Offset=0 e.Haze=0 e.Glare=0 end)
+			elseif e:IsA("Clouds") then pcall(function() e.Cover=0 e.Density=0 end) end
+		end
+		task.spawn(function()
+			for _, inst in ipairs(workspace:GetDescendants()) do
+				pcall(function()
+					if inst:IsA("ParticleEmitter") then
+						inst.Enabled=false inst.Rate=0
+					elseif inst:IsA("Beam") or inst:IsA("Trail") then
+						inst.Enabled=false
+					elseif inst:IsA("PointLight") or inst:IsA("SurfaceLight") or inst:IsA("SpotLight") then
+						inst.Enabled=false
+					elseif inst:IsA("Highlight") and inst.Name ~= "DNHubBossEsp" and inst.Name ~= "DNHubNameTag" then
+						inst.Enabled=false
+					elseif inst:IsA("Fire") or inst:IsA("Smoke") or inst:IsA("Sparkles") then
+						inst.Enabled=false
+					end
+				end)
+				task.wait()
+			end
+		end)
+		st.liteGfx = true
+	else
+		if LiteBackup then
+			pcall(function()
+				L.GlobalShadows = LiteBackup.shadows
+				L.EnvironmentDiffuseScale = LiteBackup.diffuse
+				L.EnvironmentSpecularScale = LiteBackup.specular
+			end)
+			for _, e in ipairs(L:GetChildren()) do
+				if e:IsA("PostEffect") and LiteBackup.effects[e.Name] ~= nil then
+					pcall(function() e.Enabled = LiteBackup.effects[e.Name] end)
+				elseif e:IsA("Atmosphere") and next(LiteBackup.atmos) then
+					pcall(function()
+						e.Density = LiteBackup.atmos.density
+						e.Offset = LiteBackup.atmos.offset
+						e.Haze = LiteBackup.atmos.haze
+						e.Glare = LiteBackup.atmos.glare
+					end)
+				elseif e:IsA("Clouds") and next(LiteBackup.clouds) then
+					pcall(function()
+						e.Cover = LiteBackup.clouds.cover
+						e.Density = LiteBackup.clouds.density
+					end)
+				end
+			end
+			LiteBackup = nil
+		end
+		st.liteGfx = false
+	end
+	save()
+end
+
 local function findIsland(n)
 	local t = "island_"..n
 	for _, o in ipairs(workspace:GetDescendants()) do if o.Name:lower()==t then return o end end
@@ -1000,12 +989,10 @@ local function clearESP()
 	if espC then pcall(function() espC:Disconnect() end) espC=nil end
 end
 
-local ISLAND_LABELS = {starter="Starter", jungle="Jungle", desert="Desert", snow="Snow", volcano="Volcano", fossil="Fossil"}
-
 local function startESP()
 	clearESP()
 	espF = Instance.new("Folder") espF.Name="DNHub_ESP" espF.Parent=workspace
-	for _, name in ipairs(IL) do
+	for _, name in ipairs(ISLAND_ORDER) do
 		local isl = findIsland(name)
 		if isl then
 			local part = findSpawn(isl)
@@ -1081,29 +1068,49 @@ local function findActiveBossRegion()
 	return nil, nil
 end
 
+-- Biến global chứa thông tin boss đang active
+local ActiveBoss = {part=nil, id=nil, meta=nil}
+
 local function bossEsp()
 	if not (st.bossEsp1 or st.bossEsp2) then
 		clearBossEsp()
+		ActiveBoss.part = nil
+		ActiveBoss.id = nil
+		ActiveBoss.meta = nil
 		return
 	end
 
 	local part, id = findActiveBossRegion()
 	if not part or not id then
 		clearBossEsp()
+		ActiveBoss.part = nil
+		ActiveBoss.id = nil
+		ActiveBoss.meta = nil
 		return
 	end
 
 	local meta = bossRegionMeta(id)
 	if not meta then
 		clearBossEsp()
+		ActiveBoss.part = nil
+		ActiveBoss.id = nil
+		ActiveBoss.meta = nil
 		return
 	end
 
 	local want = (meta.slot == 1 and st.bossEsp1) or (meta.slot == 2 and st.bossEsp2)
 	if not want then
 		clearBossEsp()
+		ActiveBoss.part = nil
+		ActiveBoss.id = nil
+		ActiveBoss.meta = nil
 		return
 	end
+
+	-- Lưu info boss đang active
+	ActiveBoss.part = part
+	ActiveBoss.id = id
+	ActiveBoss.meta = meta
 
 	if BossEspActive and BossEspActive.id ~= id then
 		clearBossEsp()
@@ -1166,9 +1173,41 @@ end
 
 local function stopBossEsp()
 	clearBossEsp()
+	ActiveBoss.part = nil
+	ActiveBoss.id = nil
+	ActiveBoss.meta = nil
 end
 
--- ============ FAKE NAME ============
+-- ============ TELE ĐẾN BOSS ============
+local function teleToBoss()
+	local part = ActiveBoss.part
+	if not part or not part.Parent then
+		WindUI:Notify({Title="Boss", Content="Không có boss nào đang active", Duration=3})
+		return
+	end
+	WindUI:Notify({Title="Boss", Content="Đang tween tới boss "..tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?"), Duration=2})
+	tweenTo(CFrame.new(part.Position + Vector3.new(0, 8, 0)))
+	task.wait(0.3)
+end
+
+-- ============ INFO BOSS Ở ĐẢO NÀO ============
+local function bossInfoText()
+	if not (st.bossEsp1 or st.bossEsp2) then
+		return "Boss ESP đang tắt"
+	end
+	if not ActiveBoss.part or not ActiveBoss.meta then
+		return "Không có boss nào đang active"
+	end
+	local meta = ActiveBoss.meta
+	local islandName = ISLAND_LABELS[meta.islandId] or tostring(meta.islandId or "?")
+	local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+	local distText = ""
+	if root then
+		local d = (root.Position - ActiveBoss.part.Position).Magnitude
+		distText = "\nCách "..math.floor(d).." studs"
+	end
+	return "Boss: "..meta.name.."\nĐảo: "..islandName.."\nPart: "..meta.slot..distText
+end
 local fnR = false
 local fnC = {}
 local tag = nil
@@ -1471,16 +1510,56 @@ LockSection:Dropdown({
 
 LockSection:Button({Title="Khoá ngay", Callback=function() task.spawn(autoLockPass) end})
 
+-- Tele Island
 local TGSection = TeleTab:Section({Title="Đảo"})
-TGSection:Dropdown({Title="Chọn đảo", Values=IL, Value=island, Callback=function(v) island=v save() end})
+TGSection:Dropdown({
+	Title = "Chọn đảo",
+	Values = ISLAND_DISPLAY,
+	Value = ISLAND_LABELS[island] or "Starter",
+	Callback = function(v)
+		for _, id in ipairs(ISLAND_ORDER) do
+			if ISLAND_LABELS[id] == v then
+				island = id
+				break
+			end
+		end
+		save()
+	end
+})
 TGSection:Button({Title="DỊCH CHUYỂN", Callback=function() teleIsland(island) end})
 TGSection:Toggle({Title="ESP Đảo", Default=st.esp, Callback=function(v) st.esp=v if v then startESP() else stopESP() end save() end})
 
+-- Tele Boss + Info
 local BossSection = BossTab:Section({Title="ESP Boss"})
 BossSection:Toggle({Title="ESP Part 1", Default=st.bossEsp1, Callback=function(v) st.bossEsp1=v save() end})
 BossSection:Toggle({Title="ESP Part 2", Default=st.bossEsp2, Callback=function(v) st.bossEsp2=v save() end})
 BossSection:Button({Title="Reset ESP", Callback=function() stopBossEsp() end})
 
+local BossInfoSection = BossTab:Section({Title="Thông tin Boss"})
+local bossInfoLabel = BossInfoSection:Paragraph({
+	Title = "Đang tải thông tin boss...",
+})
+
+BossInfoSection:Button({
+	Title = "Tele đến Boss",
+	Callback = function()
+		task.spawn(teleToBoss)
+	end
+})
+
+-- Auto update boss info
+task.spawn(function()
+	while true do
+		task.wait(1)
+		pcall(function()
+			if bossInfoLabel and bossInfoLabel.SetTitle then
+				bossInfoLabel:SetTitle(bossInfoText())
+			end
+		end)
+	end
+end)
+
+-- Speed
 local SpeedSection = PlrTab:Section({Title="Tốc độ"})
 SpeedSection:Toggle({Title="Bật tăng tốc", Default=st.speedOn, Callback=function(v) enableSpeed(v) end})
 SpeedSection:Slider({Title="Tốc độ (16-200)", Value={Min=16,Max=200,Default=st.speed}, Step=1, Callback=function(v) applySpeed(v) end})
@@ -1489,6 +1568,7 @@ SpeedSection:Input({Title="Nhập số", Value=tostring(st.speed), Placeholder="
 	if n and n >= 16 and n <= 500 then applySpeed(n) end
 end})
 
+-- Fake Name
 local FNSection = PlrTab:Section({Title="Fake Name"})
 FNSection:Toggle({
 	Title = "Bật Fake Name",
@@ -1520,40 +1600,12 @@ FNSection:Colorpicker({
 	Callback = function(color) setTagColor(color.R, color.G, color.B) end
 })
 
+-- Misc
 local MiscSection = MiscTab:Section({Title="Đồ hoạ"})
 MiscSection:Toggle({Title="Giảm đồ hoạ (FPS cao)", Default=st.liteGfx, Callback=function(v) setLite(v) end})
 
 local SysSection = MiscTab:Section({Title="Hệ thống"})
-SysSection:Dropdown({
-	Title = "Chế độ dịch chuyển",
-	Values = {"Nhanh (70)","Bình thường (40)"},
-	Value = teleMode=="fast" and "Nhanh (70)" or "Bình thường (40)",
-	Callback = function(v)
-		teleMode = v=="Nhanh (70)" and "fast" or "normal"
-		save()
-	end
-})
-SysSection:Toggle({Title="Auto Execute", Default=st.autoExec, Callback=function(v) st.autoExec=v save() end})
-SysSection:Button({Title="Lưu cài đặt", Callback=function() save() WindUI:Notify({Title="Config", Content="Đã lưu!", Duration=2}) end})
-SysSection:Button({Title="Tải cài đặt", Callback=function()
-	local s = loadCfg()
-	for k,v in pairs(s) do
-		if type(v) == "table" then
-			local copy = {}
-			for kk, vv in pairs(v) do copy[kk] = vv end
-			st[k] = copy
-		else
-			st[k] = v
-		end
-	end
-	island = st.island or "snow"
-	sellInt = st.sellInt or 300
-	teleMode = st.teleMode or "fast"
-	customName = st.customName or "DNHub"
-	WindUI:Notify({Title="Config", Content="Đã tải!", Duration=3})
-end})
-
-MiscTab:Button({Title="Tắt Menu", Callback=function()
+SysSection:Button({Title="Tắt Menu", Callback=function()
 	st.fish=false st.bypass=false st.skill=false st.sell=false st.speedOn=false st.fakename=false st.autoSellFull=false st.esp=false
 	st.bossEsp1=false st.bossEsp2=false st.liteGfx=false st.autoLock=false
 	Fish.farm = false
@@ -1564,7 +1616,6 @@ MiscTab:Button({Title="Tắt Menu", Callback=function()
 		LP.Character.Humanoid.WalkSpeed=16
 		LP.Character.Humanoid.JumpPower=50
 	end
-	-- Restore CanCollide CHỈ part chính
 	local c = LP.Character
 	if c then
 		for _, name in ipairs(MAIN_PARTS) do
@@ -1618,7 +1669,6 @@ task.spawn(function()
 	if st.esp then startESP() end
 	if st.speedOn and st.speed then applySpeed(st.speed) end
 	if st.liteGfx then setLite(true) end
-	if st.autoExec then pcall(function() loadstring(game:HttpGet(AEF))() end) end
 end)
 
 LP.CharacterAdded:Connect(function(c)
