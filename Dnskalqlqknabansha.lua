@@ -29,7 +29,7 @@ local def = {
 	lockRarity={Legendary=true, Mythical=true, Divine=true},
 	skillOrder={1,2,1,3},
 	sellInt=300, island="starter", teleMode="fast",
-	customName="DNHub",
+	customName="DNHub v1.2",
 	tagColorR=0.7, tagColorG=0.4, tagColorB=1.0, tagRainbow=false
 }
 
