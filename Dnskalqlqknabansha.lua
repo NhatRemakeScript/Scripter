@@ -29,7 +29,7 @@ local def = {
 	lockRarity={Legendary=true, Mythical=true, Divine=true},
 	skillOrder={1,2,1,3},
 	sellInt=300, island="starter", teleMode="fast",
-	customName="DNHub v1.2",
+	customName="DNHub V1.2",
 	tagColorR=0.7, tagColorG=0.4, tagColorB=1.0, tagRainbow=false
 }
 
@@ -246,6 +246,55 @@ local function tweenTo(cf, spd)
 	end)
 
 	Tweening = false
+end
+
+-- ============ DISMISS LOOT POPUP ============
+local function dismissLootPopup()
+	-- 1. Thử qua FishingController API
+	local f = getController("FishingController")
+	if f then
+		local ok = pcall(function()
+			if type(f.DismissLoot) == "function" then
+				f:DismissLoot()
+				return true
+			end
+			if type(f.SkipLoot) == "function" then
+				f:SkipLoot()
+				return true
+			end
+			if type(f.CloseLoot) == "function" then
+				f:CloseLoot()
+				return true
+			end
+		end)
+		if ok then return true end
+	end
+
+	-- 2. Thử tìm button trong PlayerGui
+	local keywords = {"skip", "continue", "close", "dismiss", "confirm", "ok", "next"}
+	local found = false
+	for _, g in ipairs(PG:GetChildren()) do
+		if g:IsA("ScreenGui") and g.Enabled then
+			for _, d in ipairs(g:GetDescendants()) do
+				if d:IsA("TextButton") or d:IsA("ImageButton") then
+					local n = string.lower(d.Name)
+					for _, kw in ipairs(keywords) do
+						if n:find(kw) then
+							pcall(function()
+								for _, conn in ipairs(getconnections(d.Activated) or {}) do conn:Fire() end
+								for _, conn in ipairs(getconnections(d.MouseButton1Click) or {}) do conn:Fire() end
+							end)
+							found = true
+							break
+						end
+					end
+				end
+				if found then break end
+			end
+		end
+		if found then break end
+	end
+	return found
 end
 local function walkTo(goal, stopAt, timeout, alive)
 	local c = LP.Character
@@ -689,24 +738,6 @@ local function enableSpeed(on)
 	save()
 end
 
--- Kiểm tra lệch spot trước khi cast
-local function checkSpotBeforeCast()
-	if not Spot.cframe then return true end
-	local ok = atSpot()
-	if ok then return true end
-	Fish.farm = false
-	returnToSpot()
-	task.wait(0.5)
-	local timeout = tick() + 20
-	while tick() < timeout do
-		local ok2 = atSpot()
-		if ok2 then break end
-		task.wait(0.2)
-	end
-	Fish.farm = true
-	return false
-end
-
 local Fish = {
 	dead = false,
 	running = false,
@@ -740,13 +771,23 @@ local function runFishLoop()
 		local ok, state = pcall(function() return f:GetState() end)
 		if not ok then task.wait(0.1) continue end
 		if state ~= Fish.lastState then
-			if state == "FirstPull" then Fish.firstPullDone = false end
+			if state == "FirstPull" then
+				Fish.firstPullDone = false
+			elseif state == "Caught" then
+				task.spawn(function()
+					task.wait(0.15)
+					for i = 1, 5 do
+						if not Fish.farm then break end
+						local done = dismissLootPopup()
+						if done then break end
+						task.wait(0.3)
+					end
+				end)
+			end
 			Fish.lastState = state
 		end
 		if state == "Idling" then
-			if not checkSpotBeforeCast() then
-				task.wait(0.3)
-			elseif os.clock() - Fish.lastCast >= Fish.MIN_CAST_GAP then
+			if os.clock() - Fish.lastCast >= Fish.MIN_CAST_GAP then
 				Fish.lastCast = os.clock()
 				local ctx = RS:FindFirstChild("Inputs")
 				local fc = ctx and ctx:FindFirstChild("FishingContext")
@@ -1022,6 +1063,7 @@ local function stopESP() clearESP() end
 
 -- ============ BOSS ESP ============
 local BossEspActive = nil
+local ActiveBoss = {part=nil, id=nil, meta=nil}
 
 local function bossRegionPart(id)
 	for _, inst in ipairs(Collection:GetTagged("BossRegion")) do
@@ -1068,9 +1110,6 @@ local function findActiveBossRegion()
 	return nil, nil
 end
 
--- Biến global chứa thông tin boss đang active
-local ActiveBoss = {part=nil, id=nil, meta=nil}
-
 local function bossEsp()
 	if not (st.bossEsp1 or st.bossEsp2) then
 		clearBossEsp()
@@ -1107,7 +1146,6 @@ local function bossEsp()
 		return
 	end
 
-	-- Lưu info boss đang active
 	ActiveBoss.part = part
 	ActiveBoss.id = id
 	ActiveBoss.meta = meta
@@ -1414,7 +1452,6 @@ local MiscTab = Window:Tab({Title="Khác", Icon="settings"})
 LP.Idled:Connect(function() pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end) end)
 task.spawn(function() while true do pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end) task.wait(30) end end)
 
--- ============ UI ============
 local MGSection = MainTab:Section({Title="Tự động"})
 MGSection:Toggle({Title="Tự động câu", Default=st.fish, Callback=function(v) st.fish=v if v then startFish() else stopFish() end save() end})
 MGSection:Toggle({Title="Tự động kỹ năng", Default=st.skill, Callback=function(v) st.skill=v save() end})
@@ -1466,7 +1503,6 @@ SG2Section:Button({Title="BÁN NGAY", Callback=function() task.spawn(doSell) end
 local SpotSection = MainTab:Section({Title="Vị trí câu"})
 SpotSection:Button({Title="Lưu vị trí", Callback=function() saveSpot() end})
 SpotSection:Button({Title="Về vị trí đã lưu", Callback=function() returnToSpot() end})
-SpotSection:Toggle({Title="Tự về khi lệch", Default=st.autoReturn, Callback=function(v) st.autoReturn=v save() end})
 
 local LockSection = MainTab:Section({Title="Khoá Cá🔒"})
 LockSection:Toggle({
@@ -1510,7 +1546,6 @@ LockSection:Dropdown({
 
 LockSection:Button({Title="Khoá ngay", Callback=function() task.spawn(autoLockPass) end})
 
--- Tele Island
 local TGSection = TeleTab:Section({Title="Đảo"})
 TGSection:Dropdown({
 	Title = "Chọn đảo",
@@ -1529,7 +1564,6 @@ TGSection:Dropdown({
 TGSection:Button({Title="DỊCH CHUYỂN", Callback=function() teleIsland(island) end})
 TGSection:Toggle({Title="ESP Đảo", Default=st.esp, Callback=function(v) st.esp=v if v then startESP() else stopESP() end save() end})
 
--- Tele Boss + Info
 local BossSection = BossTab:Section({Title="ESP Boss"})
 BossSection:Toggle({Title="ESP Part 1", Default=st.bossEsp1, Callback=function(v) st.bossEsp1=v save() end})
 BossSection:Toggle({Title="ESP Part 2", Default=st.bossEsp2, Callback=function(v) st.bossEsp2=v save() end})
@@ -1547,7 +1581,6 @@ BossInfoSection:Button({
 	end
 })
 
--- Auto update boss info
 task.spawn(function()
 	while true do
 		task.wait(1)
@@ -1559,7 +1592,6 @@ task.spawn(function()
 	end
 end)
 
--- Speed
 local SpeedSection = PlrTab:Section({Title="Tốc độ"})
 SpeedSection:Toggle({Title="Bật tăng tốc", Default=st.speedOn, Callback=function(v) enableSpeed(v) end})
 SpeedSection:Slider({Title="Tốc độ (16-200)", Value={Min=16,Max=200,Default=st.speed}, Step=1, Callback=function(v) applySpeed(v) end})
@@ -1568,7 +1600,6 @@ SpeedSection:Input({Title="Nhập số", Value=tostring(st.speed), Placeholder="
 	if n and n >= 16 and n <= 500 then applySpeed(n) end
 end})
 
--- Fake Name
 local FNSection = PlrTab:Section({Title="Fake Name"})
 FNSection:Toggle({
 	Title = "Bật Fake Name",
@@ -1600,7 +1631,6 @@ FNSection:Colorpicker({
 	Callback = function(color) setTagColor(color.R, color.G, color.B) end
 })
 
--- Misc
 local MiscSection = MiscTab:Section({Title="Đồ hoạ"})
 MiscSection:Toggle({Title="Giảm đồ hoạ (FPS cao)", Default=st.liteGfx, Callback=function(v) setLite(v) end})
 
@@ -1634,7 +1664,6 @@ SysSection:Button({Title="Tắt Menu", Callback=function()
 	Window:Destroy()
 end})
 
--- ============ LOOPS ============
 task.spawn(function()
 	while true do
 		if st.bossEsp1 or st.bossEsp2 then pcall(bossEsp) end
@@ -1649,17 +1678,6 @@ task.spawn(function()
 	end
 end)
 
-task.spawn(function()
-	while true do
-		task.wait(3)
-		if st.autoReturn and st.fish and Spot.cframe then
-			local ok = atSpot()
-			if not ok and Fish.farm then pcall(returnToSpot) end
-		end
-	end
-end)
-
--- ============ AUTO START ============
 task.spawn(function()
 	task.wait(2)
 	if st.fish then startFish() end
@@ -1683,4 +1701,4 @@ LP.CharacterAdded:Connect(function(c)
 	end
 end)
 
-WindUI:Notify({Title="FM-DNHUB", Content="Đã load!", Duration=4})
+WindUI:Notify({Title="DNHub V1.3", Content="Đã load!", Duration=4})
