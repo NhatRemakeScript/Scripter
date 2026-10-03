@@ -1,3 +1,6 @@
+local LOGO_ASSET_ID = "97143806525012"
+local LOGO_URL = "rbxassetid://" .. LOGO_ASSET_ID
+
 local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
 
 local P = game:GetService("Players")
@@ -7,45 +10,35 @@ local VU = game:GetService("VirtualUser")
 local RunService = game:GetService("RunService")
 local Collection = game:GetService("CollectionService")
 local Pathfinding = game:GetService("PathfindingService")
-local HttpService = game:GetService("HttpService")
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local LP = P.LocalPlayer
 local PG = LP:WaitForChild("PlayerGui")
 
--- Constants (table to reduce locals)
 local C = {
     ISLAND_ORDER = {"starter","jungle","desert","snow","volcano","fossil"},
     ISLAND_DISPLAY = {"Starter","Jungle","Desert","Snow","Volcano","Fossil"},
     ISLAND_LABELS = {starter="Starter", jungle="Jungle", desert="Desert", snow="Snow", volcano="Volcano", fossil="Fossil"},
-    ISLAND_IDS = {starter="island_starter", jungle="island_jungle", desert="island_desert", snow="island_snow", volcano="island_volcano", fossil="island_fossil"},
     MAIN_PARTS = {"HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso", "Head"},
     FISH_CAPACITY = 50,
 }
 
--- State (single table to reduce locals)
 local S = {
     fish=false, skill=false, bypass=false,
     sell=false, autoSellFull=false, useWalk=false,
     speed=36, speedOn=false,
     fakename=false, esp=false,
     bossEsp1=true, bossEsp2=true,
-    liteGfx=false, autoLock=false,
+    autoLock=false,
     lockRarity={Legendary=true, Mythical=true, Divine=true},
     skillOrder={1,2,1,3},
     sellInt=300, island="starter",
     customName="DNHub 3.0",
-    tagColorR=0.7, tagColorG=0.4, tagColorB=1.0, tagRainbow=false,
     autoBoss=false,
     antiAfk=true, antiAfkInterval=50, antiAfkKey="F13",
     castHold=0.65, tapHold=0.045, firstPullTarget=0.96,
     qteDelay=0.2, skillSpacing=0.35, equipDelay=0.35,
     returnAfterSell=true, sellTravelMode="Tween",
-    autoRoll=false, rollType="Skill Master", rollMulti="x1",
-    autoBuyRod=false, buyRodName="Stone Rod",
-    autoIsland=false, autoIslandTarget="Starter",
-    teleportTarget="Fish Merchant - Starter Island",
-    autoUnlock=false,
 }
 
 local Fish = {dead=false, running=false, farm=false, paused=false, firstPullDone=false, lastState=nil, lastCast=0, lastSkill=0, lastEquip=0}
@@ -174,13 +167,20 @@ local function countFishInBackpack()
     return fish, total, rods
 end
 
-local function isSatchelFull()
-    local fish = countFishInBackpack()
-    return fish >= C.FISH_CAPACITY
+local SkillQueue = {}
+local SkillOrderSet = {1,2,1,3}
+
+local function reloadSkillQueue()
+    SkillQueue = {}
+    for _, v in ipairs(SkillOrderSet) do table.insert(SkillQueue, v) end
+end
+
+local function nextSkillSlot()
+    if #SkillQueue == 0 then reloadSkillQueue() end
+    return table.remove(SkillQueue, 1)
 end
 
 local SlotPhase = {}
-local SkillCycle = {index = 1}
 
 local function markSlotCasting(slotName, skillId)
     local entry = SlotPhase[slotName]
@@ -226,13 +226,11 @@ end
 
 local function castSkill()
     local ids = equippedSkillIds()
-    local order = S.skillOrder
-    if type(order) ~= "table" or #order == 0 then order = {1,2,3,4} end
-    local total = #order
-    for _ = 1, total do
-        local slot = order[SkillCycle.index]
-        SkillCycle.index = SkillCycle.index + 1
-        if SkillCycle.index > total then SkillCycle.index = 1 end
+    local tries = 0
+    local maxTries = #SkillOrderSet
+    while tries < maxTries do
+        tries = tries + 1
+        local slot = nextSkillSlot()
         if slot and ids[slot] and slotReady("Slot"..slot) then
             if useSkill(slot) then return true end
         end
@@ -638,6 +636,7 @@ local function runFishLoop()
         if state ~= Fish.lastState then
             if state == "FirstPull" then Fish.firstPullDone = false
             elseif state == "Caught" then
+                reloadSkillQueue()
                 task.spawn(function()
                     task.wait(0.15)
                     for _ = 1, 5 do
@@ -646,6 +645,8 @@ local function runFishLoop()
                         task.wait(0.3)
                     end
                 end)
+            elseif state == "Idling" then
+                reloadSkillQueue()
             end
             Fish.lastState = state
         end
@@ -687,6 +688,7 @@ local minigameTask
 local function startFish()
     Fish.farm = true
     Fish.paused = false
+    reloadSkillQueue()
     if not Fish.running then task.spawn(runFishLoop) end
     if not minigameTask then
         minigameTask = task.spawn(function()
@@ -774,72 +776,6 @@ local function autoLockPass()
         LockState.busy = false
         LockState.at = os.clock()
     end)
-end
-
-local LiteBackup = nil
-
-local function setLite(want)
-    local L = Lighting
-    if want then
-        if not LiteBackup then
-            LiteBackup = {effects={},shadows=L.GlobalShadows,diffuse=L.EnvironmentDiffuseScale,specular=L.EnvironmentSpecularScale,atmos={},clouds={}}
-            for _, e in ipairs(L:GetChildren()) do
-                if e:IsA("PostEffect") then LiteBackup.effects[e.Name] = e.Enabled end
-                if e:IsA("Atmosphere") then LiteBackup.atmos = {density=e.Density,offset=e.Offset,haze=e.Haze,glare=e.Glare} end
-                if e:IsA("Clouds") then LiteBackup.clouds = {cover=e.Cover,density=e.Density} end
-            end
-        end
-        pcall(function()
-            L.GlobalShadows=false
-            L.EnvironmentDiffuseScale=0
-            L.EnvironmentSpecularScale=0
-        end)
-        for _, e in ipairs(L:GetChildren()) do
-            if e:IsA("PostEffect") then pcall(function() e.Enabled=false end)
-            elseif e:IsA("Atmosphere") then pcall(function() e.Density=0 e.Offset=0 e.Haze=0 e.Glare=0 end)
-            elseif e:IsA("Clouds") then pcall(function() e.Cover=0 e.Density=0 end) end
-        end
-        task.spawn(function()
-            for _, inst in ipairs(workspace:GetDescendants()) do
-                pcall(function()
-                    if inst:IsA("ParticleEmitter") then inst.Enabled=false inst.Rate=0
-                    elseif inst:IsA("Beam") or inst:IsA("Trail") then inst.Enabled=false
-                    elseif inst:IsA("PointLight") or inst:IsA("SurfaceLight") or inst:IsA("SpotLight") then inst.Enabled=false
-                    elseif inst:IsA("Highlight") and inst.Name ~= "DNHubBossEsp" and inst.Name ~= "DNHubNameTag" then inst.Enabled=false
-                    elseif inst:IsA("Fire") or inst:IsA("Smoke") or inst:IsA("Sparkles") then inst.Enabled=false end
-                end)
-                task.wait()
-            end
-        end)
-        S.liteGfx = true
-    else
-        if LiteBackup then
-            pcall(function()
-                L.GlobalShadows = LiteBackup.shadows
-                L.EnvironmentDiffuseScale = LiteBackup.diffuse
-                L.EnvironmentSpecularScale = LiteBackup.specular
-            end)
-            for _, e in ipairs(L:GetChildren()) do
-                if e:IsA("PostEffect") and LiteBackup.effects[e.Name] ~= nil then
-                    pcall(function() e.Enabled = LiteBackup.effects[e.Name] end)
-                elseif e:IsA("Atmosphere") and next(LiteBackup.atmos) then
-                    pcall(function()
-                        e.Density = LiteBackup.atmos.density
-                        e.Offset = LiteBackup.atmos.offset
-                        e.Haze = LiteBackup.atmos.haze
-                        e.Glare = LiteBackup.atmos.glare
-                    end)
-                elseif e:IsA("Clouds") and next(LiteBackup.clouds) then
-                    pcall(function()
-                        e.Cover = LiteBackup.clouds.cover
-                        e.Density = LiteBackup.clouds.density
-                    end)
-                end
-            end
-            LiteBackup = nil
-        end
-        S.liteGfx = false
-    end
 end
 
 local function findIsland(n)
@@ -1036,7 +972,11 @@ local function teleToBoss()
     task.wait(0.3)
 end
 
-local BossStepState = {holding=false, engaged=nil, bank=nil, bankFor=nil, bankAt=-math.huge, fails=0, last=nil, at=0, step="Idle"}
+local BossStepState = {
+    holding = false, engaged = nil, bank = nil, bankFor = nil,
+    bankAt = -math.huge, fails = 0, step = "Idle",
+    savedSpot = nil, savedIsland = nil, phase = "idle",
+}
 
 local function bossGround(islandId)
     local waterY = 3
@@ -1185,6 +1125,30 @@ local function bossScanBank(region, islandId, alive)
     return best
 end
 
+local function bossGetCurrentIsland()
+    local id = ""
+    pcall(function()
+        local ctrl = getController("IslandRegionController")
+        id = ctrl and ctrl:GetCurrentIslandId() or ""
+    end)
+    return id
+end
+
+local function bossTeleportToStarter()
+    teleIsland("starter")
+    task.wait(1)
+end
+
+local function bossTeleportBack(saved)
+    if not saved then return end
+    local id = saved.id or ""
+    if id ~= "" and id ~= bossGetCurrentIsland() then
+        pcall(function() teleIsland(id:gsub("^island_", "")) end)
+        task.wait(1)
+    end
+    if saved.cf then tweenTo(saved.cf, 60) end
+end
+
 local function bossStep()
     local store = BossStepState
     if not S.autoBoss then
@@ -1192,6 +1156,9 @@ local function bossStep()
             store.holding = false
             store.engaged = nil
             store.step = "Idle"
+            store.phase = "idle"
+            bossTeleportBack(store.savedSpot)
+            store.savedSpot = nil
         end
         return
     end
@@ -1201,6 +1168,9 @@ local function bossStep()
             store.holding = false
             store.engaged = nil
             store.step = "Idle"
+            store.phase = "idle"
+            bossTeleportBack(store.savedSpot)
+            store.savedSpot = nil
         end
         return
     end
@@ -1211,52 +1181,73 @@ local function bossStep()
         store.bankFor = nil
         store.bankAt = -math.huge
         store.fails = 0
-        store.step = "Found boss " .. tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?")
-    end
-    if store.engaged ~= ActiveBoss.id then
-        store.engaged = ActiveBoss.id
-        store.bank = nil
-        store.bankFor = nil
-        store.bankAt = -math.huge
-        store.fails = 0
+        store.phase = "saving"
+        store.step = "Saving spot and going to starter"
+        local c = LP.Character
+        if c then
+            local r = c:FindFirstChild("HumanoidRootPart")
+            if r then store.savedSpot = {cf = r.CFrame, id = bossGetCurrentIsland()} end
+        end
     end
     if not Fish.farm then
         store.step = "Enable Auto Fish"
         return
     end
-    local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-    if not root then store.step = "No character" return end
-    local stale = store.bank == nil or store.bankFor ~= part or os.clock() - store.bankAt >= 20
-    if stale then
-        store.step = "Scanning bank..."
-        local found, cancelled = bossScanBank(part, ActiveBoss.meta and ActiveBoss.meta.islandId, function() return S.autoBoss end)
-        if cancelled then return end
-        if not found then
-            store.fails = (store.fails or 0) + 1
-            store.step = store.fails >= 3 and "No dry spot" or "Scanning..."
-            return
-        end
-        store.fails = 0
-        store.bankAt = os.clock()
-        store.bank = found
-        store.bankFor = part
-    end
-    local bank = store.bank
-    if not bank then return end
-    local distance = (root.Position - bank.Position).Magnitude
-    if distance > 4 then
-        store.step = ("Flying to boss, %d studs"):format(math.floor(distance+0.5))
-        tweenTo(bank, 60)
+    if store.phase == "saving" then
+        bossTeleportToStarter()
+        store.phase = "traveling"
         return
     end
-    store.step = "Fighting boss " .. tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?")
-    local face = Vector3.new(part.Position.X, root.Position.Y, part.Position.Z)
-    pcall(function() root.CFrame = CFrame.lookAt(root.Position, face) end)
+    if store.phase == "traveling" then
+        store.step = "Moving to boss spot"
+        if store.bank == nil or store.bankFor ~= part or os.clock() - store.bankAt >= 20 then
+            local found, cancelled = bossScanBank(part, ActiveBoss.meta and ActiveBoss.meta.islandId, function() return S.autoBoss end)
+            if cancelled then return end
+            if not found then
+                store.fails = (store.fails or 0) + 1
+                if store.fails >= 3 then store.step = "No dry spot near boss, waiting" task.wait(3) end
+                return
+            end
+            store.fails = 0
+            store.bankAt = os.clock()
+            store.bank = found
+            store.bankFor = part
+        end
+        local bank = store.bank
+        if not bank then return end
+        local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if not root then return end
+        local distance = (root.Position - bank.Position).Magnitude
+        if distance > 4 then
+            tweenTo(bank, 60)
+        else
+            store.phase = "fishing"
+        end
+        return
+    end
+    if store.phase == "fishing" then
+        store.step = "Fishing boss"
+        local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            local face = Vector3.new(part.Position.X, root.Position.Y, part.Position.Z)
+            pcall(function() root.CFrame = CFrame.lookAt(root.Position, face) end)
+        end
+        return
+    end
 end
+
+task.spawn(function()
+    while true do
+        if S.bossEsp1 or S.bossEsp2 or S.autoBoss then
+            pcall(bossEsp)
+            if S.autoBoss then pcall(bossStep) end
+        end
+        task.wait(1.5)
+    end
+end)
 
 local tag = nil
 local tagLabel = nil
-local tagColorState = {r=0.7, g=0.4, b=1.0, rainbow=false}
 local humanoidRef = nil
 local lastKillAt = 0
 local NAME_HIDE = string.char(226,128,139)
@@ -1319,8 +1310,8 @@ local function createCustomTag()
     lb.Size = UDim2.new(1, 0, 1, 0)
     lb.BackgroundTransparency = 1
     lb.Text = tx
-    lb.TextColor3 = Color3.new(tagColorState.r, tagColorState.g, tagColorState.b)
-    lb.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    lb.TextColor3 = Color3.fromRGB(255,255,255)
+    lb.TextStrokeColor3 = Color3.fromRGB(0,0,0)
     lb.TextStrokeTransparency = 0.3
     lb.TextScaled = true
     lb.Font = Enum.Font.GothamBold
@@ -1345,23 +1336,12 @@ local function killGameTag()
     if own then pcall(function() own:Destroy() end) end
 end
 
-local function applyTagColor()
-    if not tagLabel or not tagLabel.Parent then return end
-    if tagColorState.rainbow then
-        local color = Color3.fromHSV((os.clock() % 12) / 12, 0.85, 1)
-        pcall(function() tagLabel.TextColor3 = color end)
-    else
-        pcall(function() tagLabel.TextColor3 = Color3.new(tagColorState.r, tagColorState.g, tagColorState.b) end)
-    end
-end
-
 local function refreshName()
     hideOriginalNames()
     if not tag or not tag.Parent or not tagLabel or not tagLabel.Parent then createCustomTag() end
     local text = tostring(S.customName ~= "" and S.customName or LP.DisplayName)
     if tagLabel and tagLabel.Parent then
         if tagLabel.Text ~= text then pcall(function() tagLabel.Text = text end) end
-        applyTagColor()
     end
     local hum = humanoidRef
     if hum and hum.Parent and hum.DisplayName ~= NAME_HIDE then
@@ -1396,24 +1376,6 @@ local function stopFake()
     end
 end
 
-local function setTagColor(r, g, b)
-    tagColorState.r = r
-    tagColorState.g = g
-    tagColorState.b = b
-    tagColorState.rainbow = false
-    applyTagColor()
-end
-
-local function setTagRainbow(on)
-    tagColorState.rainbow = on
-end
-
-local function updateTagText()
-    if tagLabel then
-        pcall(function() tagLabel.Text = tostring(S.customName ~= "" and S.customName or LP.DisplayName) end)
-    end
-end
-
 local antiAfkTask = nil
 local function antiAfkTick()
     if not S.antiAfk then return end
@@ -1445,468 +1407,10 @@ local function startAntiAfk()
     end)
 end
 
-local function applyAccent(library, value)
-    if type(library) ~= "table" then return false end
-    local color
-    if typeof(value) == "Color3" then color = value
-    elseif type(value) == "string" then
-        local ok, c = pcall(function() return Color3.fromHex(value) end)
-        if ok and typeof(c) == "Color3" then color = c end
-    end
-    if not color then return false end
-    local base = S.uiTheme or "Dark"
-    local themes = type(library.GetThemes) == "function" and library:GetThemes() or nil
-    if type(themes) ~= "table" or type(themes[base]) ~= "table" then base = "Dark" end
-    local ok = pcall(function()
-        local custom = {}
-        for key, entry in pairs(themes[base] or {}) do custom[key] = entry end
-        custom.Name = "DNHubAccent"
-        for _, key in ipairs({"Accent","Primary","Slider","Toggle","Checkbox"}) do
-            custom[key] = color
-        end
-        library:AddTheme(custom)
-    end)
-    if not ok then return false end
-    pcall(function() library:SetTheme("DNHubAccent") end)
-    return true
-end
-
--- NEW FEATURES
-local RollTask = nil
-local RollNames = {"Skill Master", "Ocean Chest", "Dragon Chest", "Aura"}
-
-local function doRollPass()
-    local gk = S.rollType
-    local k = S.rollMulti == "x10" and 10 or 1
-    local ctrl = getController("SkillGachaController")
-    if not ctrl then return false end
-    local crName = gk == "Ocean Chest" and "crate_ocean_chest" or gk == "Dragon Chest" and "crate_dragon_chest"
-    local auraPull = gk == "Aura"
-    local profile = fetchProfile()
-    if not profile then return false end
-    if crName then
-        local CrateGacha = getController("CrateGachaController")
-        if CrateGacha then
-            local r = CrateGacha.OpenPacket:Fire(crName, k)
-            if type(r) == "table" and r.ok then
-                WindUI:Notify({Title=gk, Content="Rolled x"..k, Duration=3})
-                return true
-            end
-        end
-    elseif auraPull then
-        local AuraCtrl = getController("AuraGachaController")
-        if AuraCtrl then
-            local r = AuraCtrl.Pull:Fire(k)
-            if type(r) == "table" and r.ok then
-                WindUI:Notify({Title=gk, Content="Rolled x"..k, Duration=3})
-                return true
-            end
-        end
-    else
-        local r = ctrl.Pull:Fire("Coin", k)
-        if type(r) == "table" and r.ok then
-            WindUI:Notify({Title="Skill Master", Content="Rolled x"..k, Duration=3})
-            return true
-        end
-    end
-    return false
-end
-
-local function startAutoRoll()
-    if RollTask then return end
-    RollTask = task.spawn(function()
-        while S.autoRoll do
-            task.wait(3)
-            if not S.autoRoll then break end
-            if SellBusy or Tweening then continue end
-            pcall(doRollPass)
-        end
-        RollTask = nil
-    end)
-end
-
-local function stopAutoRoll()
-    S.autoRoll = false
-    RollTask = nil
-end
-
-local BuyRodTask = nil
-local ROD_LIST = {
-    {name="Stone Rod", id="stone_rod", island="island_starter"},
-    {name="Iron Rod", id="iron_rod", island="island_starter"},
-    {name="Golden Rod", id="golden_rod", island="island_jungle"},
-    {name="Steel Rod", id="steel_rod", island="island_jungle"},
-    {name="Golden Steel Rod", id="golden_steel_rod", island="island_desert"},
-    {name="Diamond Steel Rod", id="diamond_steel_rod", island="island_desert"},
-    {name="Taoist Rod", id="taoist_rod", island="island_snow"},
-    {name="Legacy Rod", id="legacy_rod", island="island_snow"},
-}
-
-local function tryBuyRod(rodEntry)
-    if not rodEntry then return false end
-    local ctrl = getController("FishingRodShopController")
-    if not ctrl then return false end
-    local r = ctrl.PurchaseRod:Fire(rodEntry.id)
-    if r == true then
-        WindUI:Notify({Title="Rod", Content="Bought "..rodEntry.name, Duration=3})
-        local eqCtrl = getController("EquipmentsController")
-        if eqCtrl then pcall(function() eqCtrl.EquipmentEquip:Fire("rod", rodEntry.id) end) end
-        return true
-    end
-    return false
-end
-
-local function startAutoBuyRod()
-    if BuyRodTask then return end
-    BuyRodTask = task.spawn(function()
-        while S.autoBuyRod do
-            task.wait(5)
-            if not S.autoBuyRod then break end
-            local entry
-            for _, r in ipairs(ROD_LIST) do
-                if r.name == S.buyRodName then entry = r break end
-            end
-            if not entry then continue end
-            local profile = fetchProfile()
-            if profile and profile.Rods and profile.Rods[entry.id] then continue end
-            pcall(tryBuyRod, entry)
-        end
-        BuyRodTask = nil
-    end)
-end
-
-local function stopAutoBuyRod()
-    S.autoBuyRod = false
-    BuyRodTask = nil
-end
-
-local UnlockTask = nil
-local UNLOCK_QUESTS = {
-    {npc="npc_unlock_island_2", to="island_jungle", name="Jungle"},
-    {npc="npc_unlock_island_3", to="island_desert", name="Desert"},
-    {npc="npc_unlock_island_4", to="island_snow", name="Snow"},
-    {npc="npc_unlock_island_5", to="island_volcano", name="Volcanic"},
-    {npc="npc_unlock_island_6", to="island_fossil", name="Fossil"},
-}
-
-local function findInteractiveById(id, islandId)
-    for _, x in ipairs(Collection:GetTagged("Interactive")) do
-        if x:GetAttribute("InteractiveId") == id then
-            if not islandId or x:GetAttribute("IslandId") == islandId then
-                local p = x:IsA("Model") and x:GetPivot().Position or x:IsA("BasePart") and x.Position
-                if p then return p end
-            end
-        end
-    end
-    return nil
-end
-
-local function startAutoUnlock()
-    if UnlockTask then return end
-    UnlockTask = task.spawn(function()
-        while S.autoUnlock do
-            task.wait(5)
-            if not S.autoUnlock then break end
-            local profile = fetchProfile()
-            if not profile or not profile.UnlockedIslands then continue end
-            for _, q in ipairs(UNLOCK_QUESTS) do
-                if not profile.UnlockedIslands[q.to] then
-                    local np = findInteractiveById(q.npc)
-                    if np then
-                        local c = LP.Character
-                        local r = c and c:FindFirstChild("HumanoidRootPart")
-                        if r then
-                            local dist = (np - r.Position).Magnitude
-                            if dist > 15 then
-                                tweenTo(CFrame.new(np + Vector3.new(0, 5, 0)), 60)
-                            else
-                                local qCtrl = getController("QuestController")
-                                if qCtrl then
-                                    pcall(function()
-                                        qCtrl:Accept(q.npc)
-                                        task.wait(0.5)
-                                        qCtrl:Complete(q.npc)
-                                    end)
-                                    WindUI:Notify({Title="Unlock", Content="Attempted "..q.name, Duration=3})
-                                end
-                            end
-                        end
-                    end
-                    break
-                end
-            end
-        end
-        UnlockTask = nil
-    end)
-end
-
-local function stopAutoUnlock()
-    S.autoUnlock = false
-    UnlockTask = nil
-end
-
-local AutoIslandTask = nil
-local function startAutoIsland()
-    if AutoIslandTask then return end
-    AutoIslandTask = task.spawn(function()
-        while S.autoIsland do
-            task.wait(5)
-            if not S.autoIsland then break end
-            local targetId = C.ISLAND_IDS[string.lower(S.autoIslandTarget)]
-            if targetId then
-                local curId
-                pcall(function()
-                    local ctrl = getController("IslandRegionController")
-                    curId = ctrl and ctrl:GetCurrentIslandId()
-                end)
-                if curId ~= targetId then
-                    pcall(function() teleIsland(string.lower(S.autoIslandTarget)) end)
-                end
-            end
-        end
-        AutoIslandTask = nil
-    end)
-end
-
-local function stopAutoIsland()
-    S.autoIsland = false
-    AutoIslandTask = nil
-end
-
-local NPC_LIST = {
-    "Fish Merchant - Starter Island",
-    "Rod Merchant - Starter Island",
-    "Boat Merchant - Starter Island",
-    "Skill Master",
-    "Auras Dealer",
-    "Jungle Island Guide",
-    "Fish Merchant - Jungle Island",
-    "Rod Merchant - Jungle Island",
-    "Boat Merchant - Jungle Island",
-    "Desert Island Guide",
-    "Fish Merchant - Desert Island",
-    "Rod Merchant - Desert Island",
-    "Boat Merchant - Desert Island",
-    "Snow Island Guide",
-    "Fish Merchant - Snow Island",
-    "Rod Merchant - Snow Island",
-    "Boat Merchant - Snow Island",
-    "Volcanic Island Guide",
-    "Fish Merchant - Volcanic Island",
-    "Boat Merchant - Volcanic Island",
-    "Fossil Island Guide",
-    "Fish Merchant - Fossil Island",
-}
-
-local NPC_IDS = {
-    ["Fish Merchant - Starter Island"] = {id="npc_fish_seller", island="island_starter"},
-    ["Rod Merchant - Starter Island"] = {id="npc_rod_shop", island="island_starter"},
-    ["Boat Merchant - Starter Island"] = {id="npc_car_merchant", island="island_starter"},
-    ["Skill Master"] = {id="npc_gacha_book", island="island_starter"},
-    ["Auras Dealer"] = {id="npc_gacha_aura", island="island_starter"},
-    ["Jungle Island Guide"] = {id="npc_unlock_island_2", island="island_jungle"},
-    ["Fish Merchant - Jungle Island"] = {id="npc_fish_seller", island="island_jungle"},
-    ["Rod Merchant - Jungle Island"] = {id="npc_rod_shop", island="island_jungle"},
-    ["Boat Merchant - Jungle Island"] = {id="npc_car_merchant", island="island_jungle"},
-    ["Desert Island Guide"] = {id="npc_unlock_island_3", island="island_desert"},
-    ["Fish Merchant - Desert Island"] = {id="npc_fish_seller", island="island_desert"},
-    ["Rod Merchant - Desert Island"] = {id="npc_rod_shop", island="island_desert"},
-    ["Boat Merchant - Desert Island"] = {id="npc_car_merchant", island="island_desert"},
-    ["Snow Island Guide"] = {id="npc_unlock_island_4", island="island_snow"},
-    ["Fish Merchant - Snow Island"] = {id="npc_fish_seller", island="island_snow"},
-    ["Rod Merchant - Snow Island"] = {id="npc_rod_shop", island="island_snow"},
-    ["Boat Merchant - Snow Island"] = {id="npc_car_merchant", island="island_snow"},
-    ["Volcanic Island Guide"] = {id="npc_unlock_island_5", island="island_volcano"},
-    ["Fish Merchant - Volcanic Island"] = {id="npc_fish_seller", island="island_volcano"},
-    ["Boat Merchant - Volcanic Island"] = {id="npc_car_merchant", island="island_volcano"},
-    ["Fossil Island Guide"] = {id="npc_unlock_island_6", island="island_fossil"},
-    ["Fish Merchant - Fossil Island"] = {id="npc_fish_seller", island="island_fossil"},
-}
-
-local function teleportToNPC(npcName)
-    local info = NPC_IDS[npcName]
-    if not info then return end
-    local np = findInteractiveById(info.id, info.island)
-    if not np then
-        WindUI:Notify({Title="Teleport", Content="NPC not found: "..npcName, Duration=3})
-        return
-    end
-    tweenTo(CFrame.new(np + Vector3.new(0, 5, 0)), 60)
-    task.wait(0.5)
-    WindUI:Notify({Title="Teleport", Content="Arrived at "..npcName, Duration=2})
-end
-
-local FPSActive = false
-local function enableFPSBooster()
-    if FPSActive then return end
-    FPSActive = true
-    local sc = getController("SettingsController")
-    if sc and type(sc._SetLocal) == "function" then
-        pcall(sc._SetLocal, sc, "ultra_low_graphic", true)
-        pcall(sc._SetLocal, sc, "show_others_vfx", false)
-        pcall(sc._SetLocal, sc, "show_my_vfx", false)
-        pcall(sc._SetLocal, sc, "camera_shaking", false)
-        pcall(sc._SetLocal, sc, "show_damage_indicator", false)
-    end
-    pcall(function()
-        Lighting.GlobalShadows = false
-        Lighting.FogEnd = 1e9
-    end)
-    for _, d in ipairs(Lighting:GetChildren()) do
-        if d:IsA("PostEffect") then
-            d.Enabled = false
-        elseif d:IsA("Atmosphere") then
-            d.Density, d.Haze, d.Glare = 0, 0, 0
-        end
-    end
-    task.spawn(function()
-        for _, inst in ipairs(workspace:GetDescendants()) do
-            pcall(function()
-                if inst:IsA("ParticleEmitter") then inst.Enabled = false inst.Rate = 0
-                elseif inst:IsA("Beam") or inst:IsA("Trail") then inst.Enabled = false
-                elseif inst:IsA("PointLight") or inst:IsA("SurfaceLight") or inst:IsA("SpotLight") then inst.Enabled = false
-                elseif inst:IsA("Highlight") and inst.Name ~= "DNHubBossEsp" and inst.Name ~= "DNHubNameTag" then inst.Enabled = false
-                elseif inst:IsA("Fire") or inst:IsA("Smoke") or inst:IsA("Sparkles") then inst.Enabled = false
-                elseif inst:IsA("BasePart") and inst.Material ~= Enum.Material.Water then
-                    inst.Material = Enum.Material.SmoothPlastic
-                    inst.Reflectance = 0
-                    inst.CastShadow = false
-                end
-            end)
-            task.wait()
-        end
-    end)
-    WindUI:Notify({Title="FPS Booster", Content="Enabled until rejoin", Duration=3})
-end
-
-local function applyRodSkin(skinId)
-    pcall(function() LP:SetAttribute("RodSkinId", skinId) end)
-end
-
-local function applyAura(auraId)
-    pcall(function() LP:SetAttribute("AuraCatalogId", auraId) end)
-end
-
-local ROD_SKINS = {"Default", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical", "Divine"}
-local AURA_LIST = {"Default", "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythical", "Divine"}
-
-local BossHpUI = nil
-local function createBossHpUI()
-    if BossHpUI then return end
-    local sg = Instance.new("ScreenGui")
-    sg.Name = "DNHubBossHP"
-    sg.ResetOnSpawn = false
-    sg.IgnoreGuiInset = true
-    sg.DisplayOrder = 15
-    sg.Parent = PG
-    BossHpUI = sg
-    local fr = Instance.new("Frame")
-    fr.Name = "Bar"
-    fr.AnchorPoint = Vector2.new(0.5, 0)
-    fr.Position = UDim2.new(0.5, 0, 0, 8)
-    fr.Size = UDim2.fromOffset(420, 60)
-    fr.BackgroundColor3 = Color3.fromRGB(37, 37, 34)
-    fr.BorderSizePixel = 0
-    fr.Visible = false
-    fr.Parent = sg
-    Instance.new("UICorner", fr).CornerRadius = UDim.new(0, 8)
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(72, 72, 66)
-    stroke.Thickness = 1
-    stroke.Parent = fr
-    local nameLabel = Instance.new("TextLabel")
-    nameLabel.Name = "Name"
-    nameLabel.Position = UDim2.fromOffset(12, 6)
-    nameLabel.Size = UDim2.new(1, -24, 0, 18)
-    nameLabel.BackgroundTransparency = 1
-    nameLabel.Font = Enum.Font.GothamBold
-    nameLabel.TextSize = 14
-    nameLabel.TextColor3 = Color3.fromRGB(244, 240, 232)
-    nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-    nameLabel.Text = "Boss"
-    nameLabel.Parent = fr
-    local barBg = Instance.new("Frame")
-    barBg.Name = "BarBg"
-    barBg.Position = UDim2.fromOffset(12, 29)
-    barBg.Size = UDim2.new(1, -24, 0, 8)
-    barBg.BackgroundColor3 = Color3.fromRGB(72, 72, 66)
-    barBg.BorderSizePixel = 0
-    barBg.Parent = fr
-    Instance.new("UICorner", barBg).CornerRadius = UDim.new(0, 4)
-    local barFill = Instance.new("Frame")
-    barFill.Name = "Fill"
-    barFill.Size = UDim2.fromScale(1, 1)
-    barFill.BackgroundColor3 = Color3.fromRGB(214, 106, 94)
-    barFill.BorderSizePixel = 0
-    barFill.Parent = barBg
-    Instance.new("UICorner", barFill).CornerRadius = UDim.new(0, 4)
-    local hpText = Instance.new("TextLabel")
-    hpText.Name = "HPText"
-    hpText.Position = UDim2.fromOffset(12, 40)
-    hpText.Size = UDim2.new(1, -24, 0, 16)
-    hpText.BackgroundTransparency = 1
-    hpText.Font = Enum.Font.GothamMedium
-    hpText.TextSize = 12
-    hpText.TextColor3 = Color3.fromRGB(150, 147, 140)
-    hpText.TextXAlignment = Enum.TextXAlignment.Left
-    hpText.Text = "0 / 0"
-    hpText.Parent = fr
-end
-
-local function updateBossHpUI()
-    if not BossHpUI then return end
-    local fr = BossHpUI:FindFirstChild("Bar")
-    if not fr then return end
-    if not ActiveBoss.part or not ActiveBoss.meta then
-        fr.Visible = false
-        return
-    end
-    fr.Visible = true
-    local nameLabel = fr:FindFirstChild("Name")
-    if nameLabel then
-        nameLabel.Text = tostring(ActiveBoss.meta.name or "Boss")
-    end
-    local hp = 100
-    local hum = ActiveBoss.part.Parent and ActiveBoss.part.Parent:FindFirstChildOfClass("Humanoid")
-    if hum then
-        hp = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
-        local hpText = fr:FindFirstChild("HPText")
-        if hpText then
-            hpText.Text = string.format("%d / %d", math.floor(hum.Health), math.floor(hum.MaxHealth))
-        end
-    else
-        local hpText = fr:FindFirstChild("HPText")
-        if hpText then hpText.Text = "N/A" end
-    end
-    local barBg = fr:FindFirstChild("BarBg")
-    if barBg then
-        local fill = barBg:FindFirstChild("Fill")
-        if fill then
-            fill.Size = UDim2.fromScale(hp, 1)
-        end
-    end
-end
-
-local function buildStatusText()
-    local lines = {}
-    local profile = fetchProfile()
-    if not profile then return "Loading..." end
-    table.insert(lines, "Coins: " .. tostring(profile.Coin or 0))
-    table.insert(lines, "Gems: " .. tostring(profile.Gem or 0))
-    local quest = profile.Quest and profile.Quest.Current
-    table.insert(lines, "Quest: " .. (quest and tostring(quest.Id) or "None"))
-    local fish = countFishInBackpack()
-    table.insert(lines, "Fish in bag: " .. tostring(fish) .. " / " .. C.FISH_CAPACITY)
-    table.insert(lines, "Rod Equipped: " .. tostring(profile.RodEquip or "None"))
-    return table.concat(lines, "\n")
-end
-
--- ============== UI ==============
-
 local Window = WindUI:CreateWindow({
     Title = "DNHUB 3.0",
-    Icon = "fish",
-    Author = "DN Team + NgaoGaming",
+    Icon = LOGO_URL,
+    Author = "DN Team",
     Folder = "DNHub",
     Size = UDim2.fromOffset(700, 500),
     Theme = "Dark",
@@ -1916,7 +1420,7 @@ local Window = WindUI:CreateWindow({
     Topbar = {Height=44, ButtonsType="Mac"},
     OpenButton = {
         Title = "DNHUB 3.0",
-        Icon = "fish",
+        Icon = LOGO_URL,
         CornerRadius = UDim.new(1,0),
         StrokeThickness = 2,
         Enabled = true,
@@ -1925,18 +1429,12 @@ local Window = WindUI:CreateWindow({
     },
 })
 
--- Use tables instead of individual locals to avoid register limit
 local Tabs = {}
 Tabs.Main = Window:Tab({Title="Main", Icon="user"})
 Tabs.Tele = Window:Tab({Title="Teleport", Icon="map-pin"})
-Tabs.Roll = Window:Tab({Title="Roll", Icon="dice-5"})
-Tabs.Shop = Window:Tab({Title="Shop", Icon="shopping-cart"})
-Tabs.Quest = Window:Tab({Title="Quest", Icon="scroll"})
 Tabs.Boss = Window:Tab({Title="Boss", Icon="swords"})
-Tabs.Visual = Window:Tab({Title="Visual", Icon="palette"})
 Tabs.Plr = Window:Tab({Title="Player", Icon="users"})
 Tabs.Misc = Window:Tab({Title="Misc", Icon="settings"})
-Tabs.Status = Window:Tab({Title="Status", Icon="info"})
 Tabs.Settings = Window:Tab({Title="Settings", Icon="wrench"})
 
 LP.Idled:Connect(function()
@@ -1946,7 +1444,6 @@ LP.Idled:Connect(function()
     end)
 end)
 
--- MAIN TAB (use local, get GC'd after)
 do
     local sec = Tabs.Main:Section({Title="Automation"})
     sec:Toggle({Title = "Auto Fish", Default = S.fish, Callback = function(v) S.fish = v if v then startFish() else stopFish() end end})
@@ -1968,7 +1465,8 @@ do
             end
             if #arr > 0 then
                 S.skillOrder = arr
-                SkillCycle.index = 1
+                SkillOrderSet = arr
+                reloadSkillQueue()
             end
         end
     })
@@ -2012,7 +1510,6 @@ do
     sec:Button({Title = "Lock Now", Callback = function() task.spawn(autoLockPass) end})
 end
 
--- TELEPORT TAB
 do
     local sec = Tabs.Tele:Section({Title="Island"})
     sec:Dropdown({Title = "Island", Values = C.ISLAND_DISPLAY, Value = C.ISLAND_LABELS[S.island] or "Starter",
@@ -2026,56 +1523,14 @@ do
 end
 
 do
-    local sec = Tabs.Tele:Section({Title="Auto Island"})
-    sec:Dropdown({Title = "Target Island", Values = C.ISLAND_DISPLAY, Value = "Starter",
-        Callback = function(v) S.autoIslandTarget = v end})
-    sec:Toggle({Title = "Auto Island", Default = false,
-        Callback = function(v) if v then S.autoIsland = true startAutoIsland() else stopAutoIsland() end end})
-end
-
-do
-    local sec = Tabs.Tele:Section({Title="Teleport to NPC"})
-    sec:Dropdown({Title = "NPC", Values = NPC_LIST, Value = NPC_LIST[1],
-        Callback = function(v) S.teleportTarget = v end})
-    sec:Button({Title = "Teleport to NPC", Callback = function() task.spawn(function() teleportToNPC(S.teleportTarget) end) end})
-end
-
--- ROLL TAB
-do
-    local sec = Tabs.Roll:Section({Title="Gacha Roll"})
-    sec:Dropdown({Title = "Gacha Type", Values = RollNames, Value = "Skill Master",
-        Callback = function(v) S.rollType = v end})
-    sec:Dropdown({Title = "Roll Amount", Values = {"x1", "x10"}, Value = "x1",
-        Callback = function(v) S.rollMulti = v end})
-    sec:Toggle({Title = "Auto Roll", Default = false,
-        Callback = function(v) if v then S.autoRoll = true startAutoRoll() else stopAutoRoll() end end})
-    sec:Button({Title = "Roll Once", Callback = function() task.spawn(doRollPass) end})
-end
-
--- SHOP TAB
-do
-    local sec = Tabs.Shop:Section({Title="Rod Shop"})
-    local rodNames = {}
-    for _, r in ipairs(ROD_LIST) do table.insert(rodNames, r.name) end
-    sec:Dropdown({Title = "Select Rod", Values = rodNames, Value = rodNames[1],
-        Callback = function(v) S.buyRodName = v end})
-    sec:Toggle({Title = "Auto Buy Rod", Default = false,
-        Callback = function(v) if v then S.autoBuyRod = true startAutoBuyRod() else stopAutoBuyRod() end end})
-end
-
--- QUEST TAB
-do
-    local sec = Tabs.Quest:Section({Title="Unlock Island"})
-    sec:Toggle({Title = "Auto Unlock Island", Default = false,
-        Callback = function(v) if v then S.autoUnlock = true startAutoUnlock() else stopAutoUnlock() end end})
-end
-
--- BOSS TAB
-do
     local sec = Tabs.Boss:Section({Title="ESP Boss"})
     sec:Toggle({Title = "ESP Part 1", Default = S.bossEsp1, Callback = function(v) S.bossEsp1 = v end})
     sec:Toggle({Title = "ESP Part 2", Default = S.bossEsp2, Callback = function(v) S.bossEsp2 = v end})
     sec:Button({Title = "Reset ESP", Callback = function() stopBossEsp() end})
+end
+
+do
+    local sec = Tabs.Boss:Section({Title="Auto Boss"})
     sec:Toggle({Title = "Auto Boss", Default = S.autoBoss,
         Callback = function(v)
             S.autoBoss = v
@@ -2083,40 +1538,21 @@ do
                 BossStepState.holding = false
                 BossStepState.engaged = nil
                 BossStepState.step = "Idle"
+                BossStepState.phase = "idle"
+                bossTeleportBack(BossStepState.savedSpot)
+                BossStepState.savedSpot = nil
             end
         end})
-end
-
-do
-    local sec = Tabs.Boss:Section({Title="Boss Info"})
-    local lbl = sec:Paragraph({Title = "Loading boss info..."})
     sec:Button({Title = "Teleport to Boss", Callback = function() task.spawn(teleToBoss) end})
+    local lbl = sec:Paragraph({Title = "Idle"})
     task.spawn(function()
         while true do
             task.wait(1)
-            pcall(function()
-                if lbl and lbl.SetTitle then
-                    if ActiveBoss.part and ActiveBoss.meta then
-                        lbl:SetTitle("Boss: "..tostring(ActiveBoss.meta.name).."\nIsland: "..tostring(ActiveBoss.meta.islandId))
-                    else
-                        lbl:SetTitle("No active boss")
-                    end
-                end
-            end)
+            pcall(function() lbl:SetTitle(BossStepState.step or "Idle") end)
         end
     end)
 end
 
--- VISUAL TAB
-do
-    local sec = Tabs.Visual:Section({Title="Effect"})
-    sec:Dropdown({Title = "Rod Skin", Values = ROD_SKINS, Value = "Default",
-        Callback = function(v) applyRodSkin(v ~= "Default" and v or nil) end})
-    sec:Dropdown({Title = "Aura", Values = AURA_LIST, Value = "Default",
-        Callback = function(v) applyAura(v ~= "Default" and v or nil) end})
-end
-
--- PLAYER TAB
 do
     local sec = Tabs.Plr:Section({Title="Speed"})
     sec:Toggle({Title = "Enable Speed", Default = S.speedOn, Callback = function(v) enableSpeed(v) end})
@@ -2129,17 +1565,7 @@ do
     sec:Toggle({Title = "Enable Fake Name", Default = S.fakename,
         Callback = function(v) S.fakename = v if v then startFake() else stopFake() end end})
     sec:Input({Title = "Custom Nametag", Value = S.customName, Placeholder = "DNHub 3.0",
-        Callback = function(v) S.customName = v updateTagText() end})
-    sec:Toggle({Title = "Rainbow Color", Default = false, Callback = function(v) setTagRainbow(v) end})
-    sec:Colorpicker({Title = "Nametag Color", Default = Color3.new(0.7, 0.4, 1.0),
-        Callback = function(color) setTagColor(color.R, color.G, color.B) end})
-end
-
--- MISC TAB
-do
-    local sec = Tabs.Misc:Section({Title="Graphics"})
-    sec:Toggle({Title = "Lite Graphics", Default = S.liteGfx, Callback = function(v) setLite(v) end})
-    sec:Button({Title = "FPS Booster (Until Rejoin)", Callback = function() enableFPSBooster() end})
+        Callback = function(v) S.customName = v end})
 end
 
 do
@@ -2147,17 +1573,12 @@ do
     sec:Button({Title = "Unload Menu", Callback = function()
         S.fish = false S.skill = false S.bypass = false S.sell = false S.autoSellFull = false
         S.speedOn = false S.fakename = false S.esp = false S.bossEsp1 = false S.bossEsp2 = false
-        S.liteGfx = false S.autoLock = false S.autoBoss = false S.antiAfk = false
-        S.autoRoll = false S.autoBuyRod = false S.autoIsland = false S.autoUnlock = false
+        S.autoLock = false S.autoBoss = false S.antiAfk = false
         Fish.farm = false
         Fish.paused = false
         stopESP()
         stopBossEsp()
         stopFake()
-        stopAutoRoll()
-        stopAutoBuyRod()
-        stopAutoIsland()
-        stopAutoUnlock()
         local c = LP.Character
         if c then
             local hu = c:FindFirstChildOfClass("Humanoid")
@@ -2167,20 +1588,6 @@ do
     end})
 end
 
--- STATUS TAB
-do
-    local sec = Tabs.Status:Section({Title="Live Info"})
-    local lbl = sec:Paragraph({Title = "Loading..."})
-    sec:Button({Title = "Refresh", Callback = function() pcall(function() lbl:SetTitle(buildStatusText()) end) end})
-    task.spawn(function()
-        while true do
-            task.wait(2)
-            pcall(function() lbl:SetTitle(buildStatusText()) end)
-        end
-    end)
-end
-
--- SETTINGS TAB
 do
     local sec = Tabs.Settings:Section({Title="Anti AFK"})
     sec:Toggle({Title = "Anti AFK", Default = S.antiAfk,
@@ -2188,25 +1595,6 @@ do
     sec:Slider({Title = "Interval (s)", Value = {Min=10, Max=300, Default=50}, Step = 1,
         Callback = function(v) S.antiAfkInterval = v end})
 end
-
-do
-    local sec = Tabs.Settings:Section({Title="Appearance"})
-    sec:Dropdown({Title = "UI Theme", Values = {"Dark","Light","Rose","Emerald"}, Value = "Dark",
-        Callback = function(v) pcall(function() WindUI:SetTheme(v) end) end})
-    sec:Colorpicker({Title = "Accent Color", Default = Color3.fromHex("#2DD4BF"),
-        Callback = function(color) pcall(applyAccent, WindUI, color) end})
-end
-
--- Background tasks
-task.spawn(function()
-    while true do
-        if S.bossEsp1 or S.bossEsp2 or S.autoBoss then
-            pcall(bossEsp)
-            if S.autoBoss then pcall(bossStep) end
-        end
-        task.wait(1.5)
-    end
-end)
 
 task.spawn(function()
     while true do
@@ -2223,7 +1611,6 @@ task.spawn(function()
     if S.fakename then startFake() end
     if S.esp then startESP() end
     if S.speedOn and S.speed then applySpeed(S.speed) end
-    if S.liteGfx then setLite(true) end
     if S.antiAfk then startAntiAfk() end
 end)
 
@@ -2238,152 +1625,6 @@ LP.CharacterAdded:Connect(function(c)
         createCustomTag()
     end
     if S.antiAfk then startAntiAfk() end
-end)
-
-createBossHpUI()
-task.spawn(function()
-    while true do
-        task.wait(0.3)
-        pcall(updateBossHpUI)
-    end
-end)
-
--- FISH COUNTER BUBBLE
-local FishCounterUI = Instance.new("ScreenGui")
-FishCounterUI.Name = "DNHubFishCounter"
-FishCounterUI.ResetOnSpawn = false
-FishCounterUI.IgnoreGuiInset = true
-FishCounterUI.DisplayOrder = 9000
-FishCounterUI.Parent = PG
-
-do
-    local bubble = Instance.new("Frame")
-    bubble.Name = "Bubble"
-    bubble.AnchorPoint = Vector2.new(1, 0)
-    bubble.Position = UDim2.new(1, -14, 0, 14)
-    bubble.Size = UDim2.fromOffset(220, 92)
-    bubble.BackgroundColor3 = Color3.fromRGB(14, 19, 31)
-    bubble.BackgroundTransparency = 0.08
-    bubble.BorderSizePixel = 0
-    bubble.Parent = FishCounterUI
-    Instance.new("UICorner", bubble).CornerRadius = UDim.new(0, 12)
-
-    local stroke = Instance.new("UIStroke")
-    stroke.Color = Color3.fromRGB(60, 74, 102)
-    stroke.Thickness = 1
-    stroke.Transparency = 0.3
-    stroke.Parent = bubble
-
-    local title = Instance.new("TextLabel")
-    title.Size = UDim2.new(1, -20, 0, 22)
-    title.Position = UDim2.fromOffset(14, 8)
-    title.BackgroundTransparency = 1
-    title.Font = Enum.Font.GothamBold
-    title.TextSize = 14
-    title.TextColor3 = Color3.fromRGB(56, 189, 248)
-    title.TextXAlignment = Enum.TextXAlignment.Left
-    title.Text = "DNHUB - STORAGE"
-    title.Parent = bubble
-
-    local line1 = Instance.new("TextLabel")
-    line1.Name = "L1"
-    line1.Size = UDim2.new(1, -20, 0, 20)
-    line1.Position = UDim2.fromOffset(14, 32)
-    line1.BackgroundTransparency = 1
-    line1.Font = Enum.Font.GothamMedium
-    line1.TextSize = 14
-    line1.TextColor3 = Color3.fromRGB(238, 244, 255)
-    line1.TextXAlignment = Enum.TextXAlignment.Left
-    line1.Text = "Fish: 0 / 50"
-    line1.Parent = bubble
-
-    local line2 = Instance.new("TextLabel")
-    line2.Name = "L2"
-    line2.Size = UDim2.new(1, -20, 0, 18)
-    line2.Position = UDim2.fromOffset(14, 56)
-    line2.BackgroundTransparency = 1
-    line2.Font = Enum.Font.Gotham
-    line2.TextSize = 12
-    line2.TextColor3 = Color3.fromRGB(172, 186, 210)
-    line2.TextXAlignment = Enum.TextXAlignment.Left
-    line2.Text = "Total: 0 | Rod: 0"
-    line2.Parent = bubble
-
-    local barBg = Instance.new("Frame")
-    barBg.Name = "BarBg"
-    barBg.Size = UDim2.new(1, -28, 0, 4)
-    barBg.Position = UDim2.new(0, 14, 1, -12)
-    barBg.BackgroundColor3 = Color3.fromRGB(30, 41, 59)
-    barBg.BorderSizePixel = 0
-    barBg.Parent = bubble
-    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
-
-    local barFill = Instance.new("Frame")
-    barFill.Name = "Fill"
-    barFill.Size = UDim2.fromScale(0, 1)
-    barFill.BackgroundColor3 = Color3.fromRGB(56, 189, 248)
-    barFill.BorderSizePixel = 0
-    barFill.Parent = barBg
-    Instance.new("UICorner", barFill).CornerRadius = UDim.new(1, 0)
-end
-
-local lastFish, lastTotal, lastRods = -1, -1, -1
-
-local function updateFishCounter()
-    local bp = LP:FindFirstChildOfClass("Backpack")
-    if not bp then return end
-    local total, fish, rods = 0, 0, 0
-    for _, item in ipairs(bp:GetChildren()) do
-        total = total + 1
-        if isRodItem(item) then rods = rods + 1 else fish = fish + 1 end
-    end
-    if fish == lastFish and total == lastTotal and rods == lastRods then return end
-    lastFish, lastTotal, lastRods = fish, total, rods
-    local cap = C.FISH_CAPACITY
-    local l1 = FishCounterUI:FindFirstChild("Bubble"):FindFirstChild("L1")
-    local l2 = FishCounterUI:FindFirstChild("Bubble"):FindFirstChild("L2")
-    local bf = FishCounterUI:FindFirstChild("Bubble"):FindFirstChild("BarBg"):FindFirstChild("Fill")
-    if l1 then l1.Text = string.format("Fish: %d / %d", fish, cap) end
-    if l2 then l2.Text = string.format("Total: %d | Rod: %d", total, rods) end
-    local ratio = cap > 0 and math.clamp(fish / cap, 0, 1) or 0
-    if bf then
-        bf.Size = UDim2.fromScale(ratio, 1)
-        if fish >= cap then
-            bf.BackgroundColor3 = Color3.fromRGB(248, 113, 113)
-            if l1 then l1.TextColor3 = Color3.fromRGB(248, 113, 113) end
-        elseif ratio >= 0.8 then
-            bf.BackgroundColor3 = Color3.fromRGB(251, 146, 60)
-            if l1 then l1.TextColor3 = Color3.fromRGB(251, 146, 60) end
-        else
-            bf.BackgroundColor3 = Color3.fromRGB(56, 189, 248)
-            if l1 then l1.TextColor3 = Color3.fromRGB(238, 244, 255) end
-        end
-    end
-end
-
-updateFishCounter()
-
-local bpRef = LP:FindFirstChildOfClass("Backpack")
-if bpRef then
-    bpRef.ChildAdded:Connect(updateFishCounter)
-    bpRef.ChildRemoved:Connect(updateFishCounter)
-end
-
-LP.CharacterAdded:Connect(function()
-    task.wait(1)
-    local newBp = LP:FindFirstChildOfClass("Backpack")
-    if newBp then
-        newBp.ChildAdded:Connect(updateFishCounter)
-        newBp.ChildRemoved:Connect(updateFishCounter)
-    end
-    updateFishCounter()
-end)
-
-task.spawn(function()
-    while FishCounterUI.Parent do
-        task.wait(0.5)
-        updateFishCounter()
-    end
 end)
 
 WindUI:Notify({Title="DNHUB 3.0", Content="Loaded!", Duration=5})
