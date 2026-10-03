@@ -603,7 +603,7 @@ local function doSellFull()
 	end
 
 	if not npc then
-		WindUI:Notify({Title="Sell Fish", Content="No fish seller NPC found", Duration=3})
+		WindUI:Notify({Title="Bán cá", Content="Không tìm thấy NPC bán cá", Duration=3})
 		SellBusy = false
 		if wasFarming then Fish.paused = false end
 		return false
@@ -682,7 +682,7 @@ local function doSellFull()
 	task.wait(0.3)
 
 	if wasFarming then Fish.paused = false end
-	WindUI:Notify({Title="Sell Fish", Content= ok and ("Sold! +"..tostring(coin)) or "Sold!", Duration=2})
+	WindUI:Notify({Title="Bán cá", Content= ok and ("Bán xong! +"..tostring(coin)) or "Bán xong!", Duration=2})
 	SellBusy = false
 	return true
 end
@@ -708,7 +708,7 @@ local function startAutoFull()
 			if SellBusy then continue end
 			local fish = countFishInBackpack()
 			if fish >= FISH_CAPACITY then
-				WindUI:Notify({Title="Sell Fish", Content=("Bag full (%d/%d) - AUTO SELL"):format(fish, FISH_CAPACITY), Duration=2})
+				WindUI:Notify({Title="Bán cá", Content=("Kho đầy (%d/%d) - TỰ ĐỘNG BÁN"):format(fish, FISH_CAPACITY), Duration=2})
 				doSellFull()
 				task.wait(3)
 			end
@@ -1002,9 +1002,9 @@ end
 
 local function teleIsland(n)
 	local i = findIsland(n)
-	if not i then WindUI:Notify({Title="Teleport", Content="Not found: "..n, Duration=3}) return end
+	if not i then WindUI:Notify({Title="Tele", Content="Không tìm thấy "..n, Duration=3}) return end
 	local sp = findSpawn(i)
-	if not sp then WindUI:Notify({Title="Teleport", Content="No spawn point", Duration=3}) return end
+	if not sp then WindUI:Notify({Title="Tele", Content="Không có spawn", Duration=3}) return end
 	tweenTo(CFrame.new(sp.Position + Vector3.new(0,5,0)))
 	task.wait(0.3)
 end
@@ -1197,15 +1197,15 @@ end
 local function teleToBoss()
 	local part = ActiveBoss.part
 	if not part or not part.Parent then
-		WindUI:Notify({Title="Boss", Content="No active boss", Duration=3})
+		WindUI:Notify({Title="Boss", Content="Không có boss nào đang active", Duration=3})
 		return
 	end
-	WindUI:Notify({Title="Boss", Content="Tweening to boss "..tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?"), Duration=2})
+	WindUI:Notify({Title="Boss", Content="Đang tween tới boss "..tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?"), Duration=2})
 	tweenTo(CFrame.new(part.Position + Vector3.new(0, 8, 0)))
 	task.wait(0.3)
 end
 
-local BossStepState = {holding=false, engaged=nil, bank=nil, bankFor=nil, bankAt=-math.huge, fails=0, last=nil, at=0, step="idle"}
+local BossStepState = {holding=false, engaged=nil, bank=nil, bankFor=nil, bankAt=-math.huge, fails=0, last=nil, at=0, step="chờ"}
 
 local function bossGround(islandId)
 	local waterY = 3
@@ -1367,8 +1367,8 @@ local function bossStep()
 		if store.holding then
 			store.holding = false
 			store.engaged = nil
-			store.step = "idle"
-			WindUI:Notify({Title="Boss", Content="Auto boss fish disabled", Duration=3})
+			store.step = "chờ"
+			WindUI:Notify({Title="Boss", Content="Đã tắt tự động câu boss", Duration=3})
 		end
 		return
 	end
@@ -1377,8 +1377,8 @@ local function bossStep()
 		if store.holding then
 			store.holding = false
 			store.engaged = nil
-			store.step = "idle"
-			WindUI:Notify({Title="Boss", Content="Boss gone, back to normal fishing", Duration=3})
+			store.step = "chờ"
+			WindUI:Notify({Title="Boss", Content="Boss biến mất, câu lại bình thường", Duration=3})
 		end
 		return
 	end
@@ -1389,7 +1389,7 @@ local function bossStep()
 		store.bankFor = nil
 		store.bankAt = -math.huge
 		store.fails = 0
-		store.step = "Found boss " .. tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?")
+		store.step = "Thấy boss " .. tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?")
 		WindUI:Notify({Title="Boss", Content=store.step, Duration=4})
 	end
 	if store.engaged ~= ActiveBoss.id then
@@ -1400,25 +1400,25 @@ local function bossStep()
 		store.fails = 0
 	end
 	if not Fish.farm then
-		store.step = "Enable Auto Fish to fight boss"
+		store.step = "Bật Tự động câu để câu boss"
 		return
 	end
 	local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
 	if not root then
-		store.step = "No character"
+		store.step = "Chưa vào nhân vật"
 		return
 	end
 	local stale = store.bank == nil or store.bankFor ~= part or os.clock() - store.bankAt >= 20
 	if stale then
-		store.step = "Scanning dry bank near boss..."
+		store.step = "Đang dò bờ khô cạnh boss..."
 		local found, cancelled = bossScanBank(part, ActiveBoss.meta and ActiveBoss.meta.islandId, function() return st.autoBoss end)
 		if cancelled then return end
 		if not found then
 			store.fails = (store.fails or 0) + 1
 			if store.fails >= 3 then
-				store.step = "No dry spot found, retry later"
+				store.step = "Không tìm được chỗ khô, thử lại sau"
 			else
-				store.step = "No dry spot yet, rescanning"
+				store.step = "Chưa thấy chỗ khô, dò lại"
 			end
 			return
 		end
@@ -1431,11 +1431,11 @@ local function bossStep()
 	if not bank then return end
 	local distance = (root.Position - bank.Position).Magnitude
 	if distance > 4 then
-		store.step = ("Flying to boss spot, %d studs left"):format(math.floor(distance+0.5))
+		store.step = ("Đang bay tới chỗ câu boss, còn %d studs"):format(math.floor(distance+0.5))
 		tweenTo(bank, 60)
 		return
 	end
-	store.step = "Fighting boss " .. tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?")
+	store.step = "Đang câu boss " .. tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?")
 	local face = Vector3.new(part.Position.X, root.Position.Y, part.Position.Z)
 	pcall(function()
 		root.CFrame = CFrame.lookAt(root.Position, face)
@@ -1444,10 +1444,10 @@ end
 
 local function bossInfoText()
 	if not (st.bossEsp1 or st.bossEsp2 or st.autoBoss) then
-		return "Boss ESP is off"
+		return "Boss ESP đang tắt"
 	end
 	if not ActiveBoss.part or not ActiveBoss.meta then
-		return "No active boss"
+		return "Không có boss nào đang active"
 	end
 	local meta = ActiveBoss.meta
 	local islandName = ISLAND_LABELS[meta.islandId] or tostring(meta.islandId or "?")
@@ -1455,9 +1455,9 @@ local function bossInfoText()
 	local distText = ""
 	if root then
 		local d = (root.Position - ActiveBoss.part.Position).Magnitude
-		distText = "\nDistance: "..math.floor(d).." studs"
+		distText = "\nCách "..math.floor(d).." studs"
 	end
-	return "Boss: "..meta.name.."\nIsland: "..islandName.."\nPart: "..meta.slot..distText.."\n"..tostring(BossStepState.step or "")
+	return "Boss: "..meta.name.."\nĐảo: "..islandName.."\nPart: "..meta.slot..distText.."\n"..tostring(BossStepState.step or "")
 end
 
 local fnR = false
@@ -1693,7 +1693,7 @@ local function applyAccent(library, value)
 end
 
 local Window = WindUI:CreateWindow({
-	Title = "DNHUB 2.0",
+	Title = "DNHUB 2.1",
 	Icon = "fish",
 	Author = "DN Team",
 	Folder = "DNHub",
@@ -1717,21 +1717,21 @@ local Window = WindUI:CreateWindow({
 local MainTab = Window:Tab({Title="Main", Icon="user"})
 local TeleTab = Window:Tab({Title="Teleport", Icon="map-pin"})
 local PlrTab = Window:Tab({Title="Player", Icon="users"})
-local BossTab = Window:Tab({Title="Boss", Icon="swords"})
+local BossTab = Window:Tab({Title="Boss(Fixing)", Icon="swords"})
 local MiscTab = Window:Tab({Title="Misc", Icon="settings"})
 local SettingsTab = Window:Tab({Title="Settings", Icon="wrench"})
 
 LP.Idled:Connect(function() pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end) end)
 task.spawn(function() while true do pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end) task.wait(30) end end)
 
-local MGSection = MainTab:Section({Title="Automation"})
-MGSection:Toggle({Title="Auto Fish", Default=st.fish, Callback=function(v) st.fish=v if v then startFish() else stopFish() end end})
+local MGSection = MainTab:Section({Title="Auto"})
+MGSection:Toggle({Title="Auto Cast", Default=st.fish, Callback=function(v) st.fish=v if v then startFish() else stopFish() end end})
 MGSection:Toggle({Title="Auto Skill", Default=st.skill, Callback=function(v) st.skill=v end})
 MGSection:Toggle({Title="Bypass Minigame", Default=st.bypass, Callback=function(v) st.bypass=v end})
 
 local SkillSection = MainTab:Section({Title="Skill Order"})
 SkillSection:Input({
-	Title = "Slot order (1,2,3,4 - comma separated)",
+	Title = "Type(Example: 1,3,2,1)",
 	Value = table.concat(st.skillOrder or {1,2,1,3}, ","),
 	Placeholder = "1,2,1,3",
 	Callback = function(v)
@@ -1748,26 +1748,14 @@ SkillSection:Input({
 		end
 	end
 })
-SkillSection:Button({Title="Preset: Z,X,Z,C", Callback=function()
-	st.skillOrder = {1,2,1,3}
-	SkillCycle.index = 1
-end})
-SkillSection:Button({Title="Preset: Z,X,C,V", Callback=function()
-	st.skillOrder = {1,2,3,4}
-	SkillCycle.index = 1
-end})
-SkillSection:Button({Title="Preset: V,C,X,Z", Callback=function()
-	st.skillOrder = {4,3,2,1}
-	SkillCycle.index = 1
-end})
 
-local SG2Section = MainTab:Section({Title="Sell Fish"})
+local SG2Section = MainTab:Section({Title="Sell Tab"})
 SG2Section:Toggle({Title="Auto Sell", Default=st.sell, Callback=function(v) st.sell=v if v then startSell() end end})
-SG2Section:Toggle({Title="Sell When Full", Default=st.autoSellFull, Callback=function(v) st.autoSellFull=v if v then startAutoFull() end end})
-SG2Section:Toggle({Title="Walk to NPC (no tween)", Default=st.useWalk, Callback=function(v) st.useWalk=v end})
-SG2Section:Toggle({Title="Return after selling", Default=st.returnAfterSell, Callback=function(v) st.returnAfterSell=v end})
+SG2Section:Toggle({Title="Sell If Full", Default=st.autoSellFull, Callback=function(v) st.autoSellFull=v if v then startAutoFull() end end})
+SG2Section:Toggle({Title="Walk mode", Default=st.useWalk, Callback=function(v) st.useWalk=v end})
+SG2Section:Toggle({Title="Return After Sell", Default=st.returnAfterSell, Callback=function(v) st.returnAfterSell=v end})
 SG2Section:Dropdown({
-	Title = "Sell Travel Mode",
+	Title = "Cách đi bán",
 	Values = {"Tween","Walk","Instant"},
 	Value = st.sellTravelMode or "Tween",
 	Callback = function(v)
@@ -1775,12 +1763,12 @@ SG2Section:Dropdown({
 		st.useWalk = (v == "Walk")
 	end,
 })
-SG2Section:Slider({Title="Interval (seconds)", Value={Min=30,Max=3600,Default=sellInt}, Step=1, Callback=function(v) sellInt=v end})
-SG2Section:Button({Title="SELL NOW", Callback=function() task.spawn(doSellFull) end})
+SG2Section:Slider({Title="Time (giây)", Value={Min=30,Max=3600,Default=sellInt}, Step=1, Callback=function(v) sellInt=v end})
+SG2Section:Button({Title="Sell Now!", Callback=function() task.spawn(doSellFull) end})
 
-local LockSection = MainTab:Section({Title="Lock Fish🔒"})
+local LockSection = MainTab:Section({Title="Lock🔒"})
 LockSection:Toggle({
-	Title = "Enable Auto Lock",
+	Title = "Auto Lock",
 	Default = st.autoLock,
 	Callback = function(v)
 		st.autoLock = v
@@ -1800,7 +1788,7 @@ local function raritySetToArray(set)
 end
 
 LockSection:Dropdown({
-	Title = "Rarity to Lock",
+	Title = "Lock Ratity",
 	Values = rarityList,
 	Multi = true,
 	AllowNone = true,
@@ -1816,11 +1804,11 @@ LockSection:Dropdown({
 	end
 })
 
-LockSection:Button({Title="Lock Now", Callback=function() task.spawn(autoLockPass) end})
+LockSection:Button({Title="Lock now", Callback=function() task.spawn(autoLockPass) end})
 
 local TGSection = TeleTab:Section({Title="Island"})
 TGSection:Dropdown({
-	Title = "Select Island",
+	Title = "Choose",
 	Values = ISLAND_DISPLAY,
 	Value = ISLAND_LABELS[island] or "Starter",
 	Callback = function(v)
@@ -1833,8 +1821,8 @@ TGSection:Dropdown({
 	end
 })
 TGSection:Dropdown({
-	Title = "Teleport Mode",
-	Values = {"Instant TP","Tween"},
+	Title = "Teleport Type",
+	Values = {"Instant TP(Not work)","Tween"},
 	Value = st.tpMode == "Tween" and "Tween" or "Instant TP",
 	Callback = function(v)
 		st.tpMode = (v == "Tween") and "Tween" or "Instant"
@@ -1842,9 +1830,9 @@ TGSection:Dropdown({
 })
 TGSection:Button({Title="TELEPORT", Callback=function() teleIsland(island) end})
 TGSection:Toggle({Title="ESP Island", Default=st.esp, Callback=function(v) st.esp=v if v then startESP() else stopESP() end end})
-TGSection:Button({Title="Stop Flying", Callback=function()
+TGSection:Button({Title="Stop Teleport", Callback=function()
 	Tweening = false
-	WindUI:Notify({Title="Teleport", Content="Stopped flying", Duration=2})
+	WindUI:Notify({Title="Tele", Content="Stopped", Duration=2})
 end})
 TGSection:Slider({
 	Title = "Fly Speed",
@@ -1853,39 +1841,39 @@ TGSection:Slider({
 	Callback = function(v) st.flySpeed = v end,
 })
 TGSection:Slider({
-	Title = "Pin at Destination (s)",
+	Title = "Wait After Teleport(s)",
 	Value = {Min=0,Max=8,Default=st.flyPin or 3},
 	Step = 0.1,
 	Callback = function(v) st.flyPin = v end,
 })
 TGSection:Slider({
-	Title = "Cooldown between teleports",
+	Title = "Fly CD",
 	Value = {Min=0,Max=90,Default=st.tpCooldown or 12},
 	Step = 1,
 	Callback = function(v) st.tpCooldown = v end,
 })
 
-local BossSection = BossTab:Section({Title="Boss ESP"})
+local BossSection = BossTab:Section({Title="ESP Boss"})
 BossSection:Toggle({Title="ESP Part 1", Default=st.bossEsp1, Callback=function(v) st.bossEsp1=v end})
 BossSection:Toggle({Title="ESP Part 2", Default=st.bossEsp2, Callback=function(v) st.bossEsp2=v end})
 BossSection:Button({Title="Reset ESP", Callback=function() stopBossEsp() end})
-BossSection:Toggle({Title="Auto Boss Fish", Default=st.autoBoss, Callback=function(v)
+BossSection:Toggle({Title="Auto Boss", Default=st.autoBoss, Callback=function(v)
 	st.autoBoss = v
 	if not v and BossStepState.holding then
 		BossStepState.holding = false
 		BossStepState.engaged = nil
-		BossStepState.step = "idle"
+		BossStepState.step = "chờ"
 	end
 end})
 BossSection:Toggle({Title="Return after boss", Default=st.bossReturn, Callback=function(v) st.bossReturn=v end})
 
 local BossInfoSection = BossTab:Section({Title="Boss Info"})
 local bossInfoLabel = BossInfoSection:Paragraph({
-	Title = "Loading boss info...",
+	Title = "Loading boss information...",
 })
 
 BossInfoSection:Button({
-	Title = "Teleport to Boss",
+	Title = "Boss Teleport",
 	Callback = function()
 		task.spawn(teleToBoss)
 	end
@@ -1903,16 +1891,15 @@ task.spawn(function()
 end)
 
 local SpeedSection = PlrTab:Section({Title="Speed"})
-SpeedSection:Toggle({Title="Enable Speed", Default=st.speedOn, Callback=function(v) enableSpeed(v) end})
-SpeedSection:Slider({Title="Speed (16-200)", Value={Min=16,Max=200,Default=st.speed}, Step=1, Callback=function(v) applySpeed(v) end})
-SpeedSection:Input({Title="Enter number", Value=tostring(st.speed), Placeholder="36", Callback=function(v)
+SpeedSection:Toggle({Title="Speed", Default=st.speedOn, Callback=function(v) enableSpeed(v) end})
+SpeedSection:Input({Title="Type", Value=tostring(st.speed), Placeholder="36", Callback=function(v)
 	local n = tonumber(v)
 	if n and n >= 16 and n <= 500 then applySpeed(n) end
 end})
 
 local FNSection = PlrTab:Section({Title="Fake Name"})
 FNSection:Toggle({
-	Title = "Enable Fake Name",
+	Title = "Fake Name",
 	Default = st.fakename,
 	Callback = function(v)
 		st.fakename = v
@@ -1920,28 +1907,28 @@ FNSection:Toggle({
 	end
 })
 FNSection:Input({
-	Title = "Display Name",
+	Title = "Nametag",
 	Value = customName,
-	Placeholder = "Enter name...",
+	Placeholder = "DNHub 2.1",
 	Callback = function(v)
 		customName = v
 		updateTagText()
 	end
 })
 FNSection:Toggle({
-	Title = "Rainbow Color",
+	Title = "Rainbow",
 	Default = st.tagRainbow,
 	Callback = function(v) setTagRainbow(v) end
 })
 FNSection:Colorpicker({
-	Title = "Tag Color",
+	Title = "Nametag Color",
 	Default = Color3.new(st.tagColorR or 0.7, st.tagColorG or 0.4, st.tagColorB or 1.0),
 	Callback = function(color) setTagColor(color.R, color.G, color.B) end
 })
 
 local AntiAfkSection = SettingsTab:Section({Title="Anti AFK"})
 AntiAfkSection:Toggle({
-	Title = "Enable Anti AFK",
+	Title = "Anti AFK",
 	Default = st.antiAfk,
 	Callback = function(v)
 		st.antiAfk = v
@@ -1949,21 +1936,21 @@ AntiAfkSection:Toggle({
 	end
 })
 AntiAfkSection:Slider({
-	Title = "Interval (seconds)",
+	Title = "Anti AFK Time",
 	Value = {Min=10,Max=300,Default=st.antiAfkInterval or 50},
 	Step = 1,
 	Callback = function(v) st.antiAfkInterval = v end,
 })
 AntiAfkSection:Dropdown({
-	Title = "Backup Key",
+	Title = "AFK Mode",
 	Values = {"F13","F14","Numpad7","F15"},
 	Value = st.antiAfkKey or "F13",
 	Callback = function(v) st.antiAfkKey = v end,
 })
 
-local FishOptSection = SettingsTab:Section({Title="Fishing Options"})
+local FishOptSection = SettingsTab:Section({Title="Settings"})
 FishOptSection:Slider({
-	Title = "First Pull Target",
+	Title = "Damage Multiplier",
 	Value = {Min=0.8,Max=0.99,Default=st.firstPullTarget or 0.96},
 	Step = 0.01,
 	Callback = function(v) st.firstPullTarget = v end,
@@ -1975,22 +1962,22 @@ FishOptSection:Slider({
 	Callback = function(v) st.castHold = v end,
 })
 FishOptSection:Slider({
-	Title = "QTE Delay",
+	Title = "Minigame CD",
 	Value = {Min=0,Max=0.6,Default=st.qteDelay or 0.2},
 	Step = 0.01,
 	Callback = function(v) st.qteDelay = v end,
 })
 FishOptSection:Slider({
-	Title = "Skill Spacing",
+	Title = "Skill Timing",
 	Value = {Min=0.1,Max=2,Default=st.skillSpacing or 0.35},
 	Step = 0.05,
 	Callback = function(v) st.skillSpacing = v end,
 })
 
-local ThemeSection = SettingsTab:Section({Title="Appearance"})
+local ThemeSection = SettingsTab:Section({Title="Display"})
 ThemeSection:Dropdown({
 	Title = "Theme",
-	Values = {"Dark","Light","Rose","Ocean","Emerald"},
+	Values = {"Dark","Light","Rose","Emerald"},
 	Value = st.uiTheme or "Dark",
 	Callback = function(v)
 		st.uiTheme = v
@@ -1998,7 +1985,7 @@ ThemeSection:Dropdown({
 	end,
 })
 ThemeSection:Colorpicker({
-	Title = "Accent Color",
+	Title = "Toggle Color",
 	Default = Color3.fromHex("#2DD4BF"),
 	Callback = function(color)
 		st.uiAccent = color:ToHex()
@@ -2006,19 +1993,19 @@ ThemeSection:Colorpicker({
 	end,
 })
 ThemeSection:Button({
-	Title = "Clear Custom Accent",
+	Title = "Delete Custom Color",
 	Callback = function()
 		st.uiAccent = ""
 		pcall(function() WindUI:SetTheme(st.uiTheme or "Dark") end)
-		WindUI:Notify({Title="Theme", Content="Cleared custom accent", Duration=2})
+		WindUI:Notify({Title="Theme", Content="Delete Custom Color", Duration=2})
 	end,
 })
 
-local MiscSection = MiscTab:Section({Title="Graphics"})
-MiscSection:Toggle({Title="Lite Graphics (High FPS)", Default=st.liteGfx, Callback=function(v) setLite(v) end})
+local MiscSection = MiscTab:Section({Title="Đồ hoạ"})
+MiscSection:Toggle({Title="Buff FPS", Default=st.liteGfx, Callback=function(v) setLite(v) end})
 
 local SysSection = MiscTab:Section({Title="System"})
-SysSection:Button({Title="Kill Menu", Callback=function()
+SysSection:Button({Title="Unload Menu", Callback=function()
 	st.fish=false st.bypass=false st.skill=false st.sell=false st.speedOn=false st.fakename=false st.autoSellFull=false st.esp=false
 	st.bossEsp1=false st.bossEsp2=false st.liteGfx=false st.autoLock=false st.autoBoss=false st.antiAfk=false
 	Fish.farm = false
@@ -2098,6 +2085,8 @@ LP.CharacterAdded:Connect(function(c)
 	if st.antiAfk then startAntiAfk() end
 end)
 
+WindUI:Notify({Title="DNHUB 2.1", Content="New Update! English Version", Duration=5})
+
 local FishCounterUI = Instance.new("ScreenGui")
 FishCounterUI.Name = "DNHubFishCounter"
 FishCounterUI.ResetOnSpawn = false
@@ -2134,7 +2123,7 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 14
 title.TextColor3 = Color3.fromRGB(56, 189, 248)
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "DNHUB - FISH BAG"
+title.Text = "DNHUB - STORAGE"
 title.Parent = bubble
 
 local line1 = Instance.new("TextLabel")
@@ -2146,7 +2135,7 @@ line1.Font = Enum.Font.GothamMedium
 line1.TextSize = 14
 line1.TextColor3 = Color3.fromRGB(238, 244, 255)
 line1.TextXAlignment = Enum.TextXAlignment.Left
-line1.Text = "Fish: 0 / 50"
+line1.Text = "Ca: 0 / 50"
 line1.Parent = bubble
 
 local line2 = Instance.new("TextLabel")
@@ -2158,7 +2147,7 @@ line2.Font = Enum.Font.Gotham
 line2.TextSize = 12
 line2.TextColor3 = Color3.fromRGB(172, 186, 210)
 line2.TextXAlignment = Enum.TextXAlignment.Left
-line2.Text = "Total: 0 | Rod: 0"
+line2.Text = "DN Team"
 line2.Parent = bubble
 
 local barBg = Instance.new("Frame")
@@ -2189,7 +2178,7 @@ local lastFish, lastTotal, lastRods = -1, -1, -1
 local function updateFishCounter()
 	local bp = LP:FindFirstChildOfClass("Backpack")
 	if not bp then
-		line1.Text = "No Backpack"
+		line1.Text = "Khong co Backpack"
 		line2.Text = ""
 		return
 	end
@@ -2207,8 +2196,8 @@ local function updateFishCounter()
 	end
 	lastFish, lastTotal, lastRods = fish, total, rods
 	local cap = FISH_CAPACITY
-	line1.Text = string.format("Fish: %d / %d", fish, cap)
-	line2.Text = string.format("Total: %d | Rod: %d", total, rods)
+	line1.Text = string.format("Ca: %d / %d", fish, cap)
+	line2.Text = string.format("Tong: %d | Rod: %d", total, rods)
 	local ratio = cap > 0 and math.clamp(fish / cap, 0, 1) or 0
 	barFill.Size = UDim2.fromScale(ratio, 1)
 	if fish >= cap then
@@ -2247,5 +2236,3 @@ task.spawn(function()
 		updateFishCounter()
 	end
 end)
-
-WindUI:Notify({Title="DNHUB 2.0", Content="Loaded! Fish >= 50 -> auto sell", Duration=5})
