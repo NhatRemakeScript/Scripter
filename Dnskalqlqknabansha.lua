@@ -18,6 +18,290 @@ local MAIN_PARTS = {"HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso", "He
 
 local FISH_CAPACITY = 50
 
+local Lang = {
+    current = "vi",
+    texts = {
+        vi = {
+            window_title = "DNHUB 2.0",
+            tab_main = "Chính",
+            tab_tele = "Dịch chuyển",
+            tab_plr = "Người chơi",
+            tab_boss = "Boss",
+            tab_misc = "Khác",
+            tab_settings = "Cài đặt",
+            sec_auto = "Tự động",
+            sec_skill_order = "Thứ tự Skill",
+            sec_sell = "Bán cá",
+            sec_lock = "Khoá Cá🔒",
+            sec_island = "Đảo",
+            sec_boss_esp = "ESP Boss",
+            sec_boss_info = "Thông tin Boss",
+            sec_speed = "Tốc độ",
+            sec_fakename = "Fake Name",
+            sec_antiafk = "Chống AFK",
+            sec_fish_opt = "Tuỳ chọn câu",
+            sec_theme = "Giao diện",
+            sec_gfx = "Đồ hoạ",
+            sec_system = "Hệ thống",
+            sec_language = "Ngôn ngữ",
+            t_auto_fish = "Tự động câu",
+            t_auto_skill = "Tự động kỹ năng",
+            t_bypass = "Vượt Minigame",
+            t_auto_sell = "Tự động bán",
+            t_auto_full = "Bán nếu đầy kho",
+            t_walk_npc = "Đi bộ tới NPC (thay tween)",
+            t_return_sell = "Quay lại chỗ cũ sau khi bán",
+            t_auto_lock = "Bật tự khoá cá",
+            t_esp_island = "ESP Đảo",
+            t_esp_boss1 = "ESP Part 1",
+            t_esp_boss2 = "ESP Part 2",
+            t_auto_boss = "Tự động câu Boss",
+            t_boss_return = "Về chỗ câu sau khi boss xong",
+            t_speed = "Bật tăng tốc",
+            t_fake = "Bật Fake Name",
+            t_rainbow = "Màu cầu vồng",
+            t_antiafk = "Bật chống AFK",
+            t_lite = "Giảm đồ hoạ (FPS cao)",
+            b_skill_order = "Thứ tự slot (1,2,3,4 - cách dấu phẩy)",
+            b_tele = "DỊCH CHUYỂN",
+            b_stop_fly = "Dừng bay",
+            b_reset_esp = "Reset ESP",
+            b_tele_boss = "Tele đến Boss",
+            b_sell_now = "BÁN NGAY",
+            b_lock_now = "Khoá ngay",
+            b_kill_ui = "Tắt Menu",
+            b_clear_accent = "Xóa màu tuỳ chỉnh",
+            d_sell_way = "Cách đi bán",
+            d_tp_mode = "Kiểu dịch chuyển",
+            d_island = "Chọn đảo",
+            d_theme = "Bộ màu",
+            d_afk_key = "Phím dự phòng",
+            d_rarity = "Độ hiếm muốn khoá",
+            s_sell_int = "Thời gian (giây)",
+            s_fly_speed = "Tốc độ bay",
+            s_fly_pin = "Đứng lại điểm đến (giây)",
+            s_tp_cd = "Nghỉ giữa 2 lần bay",
+            s_speed = "Tốc độ (16-200)",
+            s_speed_num = "Nhập số",
+            s_afk_int = "Khoảng thời gian (giây)",
+            s_first_pull = "Kéo First Pull tới",
+            s_cast_hold = "Giữ nút ném câu",
+            s_qte_delay = "Độ trễ QTE",
+            s_skill_space = "Khoảng cách skill",
+            i_custom_name = "Tên hiển thị",
+            c_tag_color = "Màu tag",
+            p_boss_info = "Đang tải thông tin boss...",
+            n_sell = "Bán cá",
+            n_tele = "Tele",
+            n_boss = "Boss",
+            n_theme = "Theme",
+            n_no_npc = "Không tìm thấy NPC bán cá",
+            n_sold = "Bán xong! +",
+            n_sold_ok = "Bán xong!",
+            n_full = "Kho đầy (%d/%d) - TỰ ĐỘNG BÁN",
+            n_no_island = "Không tìm thấy ",
+            n_no_spawn = "Không có spawn",
+            n_no_boss = "Không có boss nào đang active",
+            n_tween_boss = "Đang tween tới boss ",
+            n_stop_fly = "Đã dừng bay",
+            n_no_accent = "Đã xóa màu tuỳ chỉnh",
+            n_loaded = "Đã load! Cá >= 50 -> tự động bán",
+            d_lang = "Ngôn ngữ",
+            d_lang_value = "Tiếng Việt",
+            btn_lang_vi = "Tiếng Việt",
+            btn_lang_en = "English",
+            btn_lang_id = "Indonesia",
+        },
+        en = {
+            window_title = "DNHUB 2.0",
+            tab_main = "Main",
+            tab_tele = "Teleport",
+            tab_plr = "Player",
+            tab_boss = "Boss",
+            tab_misc = "Misc",
+            tab_settings = "Settings",
+            sec_auto = "Automation",
+            sec_skill_order = "Skill Order",
+            sec_sell = "Sell Fish",
+            sec_lock = "Lock Fish🔒",
+            sec_island = "Island",
+            sec_boss_esp = "Boss ESP",
+            sec_boss_info = "Boss Info",
+            sec_speed = "Speed",
+            sec_fakename = "Fake Name",
+            sec_antiafk = "Anti AFK",
+            sec_fish_opt = "Fishing Options",
+            sec_theme = "Appearance",
+            sec_gfx = "Graphics",
+            sec_system = "System",
+            sec_language = "Language",
+            t_auto_fish = "Auto Fish",
+            t_auto_skill = "Auto Skill",
+            t_bypass = "Bypass Minigame",
+            t_auto_sell = "Auto Sell",
+            t_auto_full = "Sell When Full",
+            t_walk_npc = "Walk to NPC (no tween)",
+            t_return_sell = "Return after selling",
+            t_auto_lock = "Enable Auto Lock",
+            t_esp_island = "ESP Island",
+            t_esp_boss1 = "ESP Part 1",
+            t_esp_boss2 = "ESP Part 2",
+            t_auto_boss = "Auto Boss Fish",
+            t_boss_return = "Return after boss",
+            t_speed = "Enable Speed",
+            t_fake = "Enable Fake Name",
+            t_rainbow = "Rainbow Color",
+            t_antiafk = "Enable Anti AFK",
+            t_lite = "Lite Graphics (High FPS)",
+            b_skill_order = "Slot order (1,2,3,4 - comma separated)",
+            b_tele = "TELEPORT",
+            b_stop_fly = "Stop Flying",
+            b_reset_esp = "Reset ESP",
+            b_tele_boss = "Teleport to Boss",
+            b_sell_now = "SELL NOW",
+            b_lock_now = "Lock Now",
+            b_kill_ui = "Kill Menu",
+            b_clear_accent = "Clear Custom Accent",
+            d_sell_way = "Sell Travel Mode",
+            d_tp_mode = "Teleport Mode",
+            d_island = "Select Island",
+            d_theme = "Theme",
+            d_afk_key = "Backup Key",
+            d_rarity = "Rarity to Lock",
+            s_sell_int = "Interval (seconds)",
+            s_fly_speed = "Fly Speed",
+            s_fly_pin = "Pin at Destination (s)",
+            s_tp_cd = "Cooldown between teleports",
+            s_speed = "Speed (16-200)",
+            s_speed_num = "Enter number",
+            s_afk_int = "Interval (seconds)",
+            s_first_pull = "First Pull Target",
+            s_cast_hold = "Cast Hold",
+            s_qte_delay = "QTE Delay",
+            s_skill_space = "Skill Spacing",
+            i_custom_name = "Display Name",
+            c_tag_color = "Tag Color",
+            p_boss_info = "Loading boss info...",
+            n_sell = "Sell Fish",
+            n_tele = "Teleport",
+            n_boss = "Boss",
+            n_theme = "Theme",
+            n_no_npc = "No fish seller NPC found",
+            n_sold = "Sold! +",
+            n_sold_ok = "Sold!",
+            n_full = "Bag full (%d/%d) - AUTO SELL",
+            n_no_island = "Not found: ",
+            n_no_spawn = "No spawn point",
+            n_no_boss = "No active boss",
+            n_tween_boss = "Tweening to boss ",
+            n_stop_fly = "Stopped flying",
+            n_no_accent = "Cleared custom accent",
+            n_loaded = "Loaded! Fish >= 50 -> auto sell",
+            d_lang = "Language",
+            d_lang_value = "English",
+            btn_lang_vi = "Tiếng Việt",
+            btn_lang_en = "English",
+            btn_lang_id = "Indonesia",
+        },
+        id = {
+            window_title = "DNHUB 2.0",
+            tab_main = "Utama",
+            tab_tele = "Teleport",
+            tab_plr = "Pemain",
+            tab_boss = "Boss",
+            tab_misc = "Lainnya",
+            tab_settings = "Pengaturan",
+            sec_auto = "Otomatis",
+            sec_skill_order = "Urutan Skill",
+            sec_sell = "Jual Ikan",
+            sec_lock = "Kunci Ikan🔒",
+            sec_island = "Pulau",
+            sec_boss_esp = "ESP Boss",
+            sec_boss_info = "Info Boss",
+            sec_speed = "Kecepatan",
+            sec_fakename = "Nama Palsu",
+            sec_antiafk = "Anti AFK",
+            sec_fish_opt = "Opsi Memancing",
+            sec_theme = "Tampilan",
+            sec_gfx = "Grafik",
+            sec_system = "Sistem",
+            sec_language = "Bahasa",
+            t_auto_fish = "Auto Mancing",
+            t_auto_skill = "Auto Skill",
+            t_bypass = "Lewati Minigame",
+            t_auto_sell = "Auto Jual",
+            t_auto_full = "Jual Saat Penuh",
+            t_walk_npc = "Berjalan ke NPC",
+            t_return_sell = "Kembali setelah jual",
+            t_auto_lock = "Aktifkan Auto Kunci",
+            t_esp_island = "ESP Pulau",
+            t_esp_boss1 = "ESP Bagian 1",
+            t_esp_boss2 = "ESP Bagian 2",
+            t_auto_boss = "Auto Mancing Boss",
+            t_boss_return = "Kembali setelah boss",
+            t_speed = "Aktifkan Kecepatan",
+            t_fake = "Aktifkan Nama Palsu",
+            t_rainbow = "Warna Pelangi",
+            t_antiafk = "Aktifkan Anti AFK",
+            t_lite = "Grafik Ringan (FPS Tinggi)",
+            b_skill_order = "Urutan slot (1,2,3,4 - pisahkan koma)",
+            b_tele = "TELEPORT",
+            b_stop_fly = "Stop Terbang",
+            b_reset_esp = "Reset ESP",
+            b_tele_boss = "Teleport ke Boss",
+            b_sell_now = "JUAL SEKARANG",
+            b_lock_now = "Kunci Sekarang",
+            b_kill_ui = "Matikan Menu",
+            b_clear_accent = "Hapus Warna Kustom",
+            d_sell_way = "Cara Jual",
+            d_tp_mode = "Mode Teleport",
+            d_island = "Pilih Pulau",
+            d_theme = "Tema",
+            d_afk_key = "Tombol Cadangan",
+            d_rarity = "Rarity untuk Dikunci",
+            s_sell_int = "Interval (detik)",
+            s_fly_speed = "Kecepatan Terbang",
+            s_fly_pin = "Berhenti di Tujuan (s)",
+            s_tp_cd = "Cooldown antar teleport",
+            s_speed = "Kecepatan (16-200)",
+            s_speed_num = "Masukkan angka",
+            s_afk_int = "Interval (detik)",
+            s_first_pull = "Target First Pull",
+            s_cast_hold = "Tahan Cast",
+            s_qte_delay = "Delay QTE",
+            s_skill_space = "Jarak Skill",
+            i_custom_name = "Nama Tampilan",
+            c_tag_color = "Warna Tag",
+            p_boss_info = "Memuat info boss...",
+            n_sell = "Jual Ikan",
+            n_tele = "Teleport",
+            n_boss = "Boss",
+            n_theme = "Tema",
+            n_no_npc = "NPC penjual ikan tidak ditemukan",
+            n_sold = "Terjual! +",
+            n_sold_ok = "Terjual!",
+            n_full = "Tas penuh (%d/%d) - AUTO JUAL",
+            n_no_island = "Tidak ditemukan: ",
+            n_no_spawn = "Tidak ada spawn",
+            n_no_boss = "Tidak ada boss aktif",
+            n_tween_boss = "Menuju boss ",
+            n_stop_fly = "Berhenti terbang",
+            n_no_accent = "Warna kustom dihapus",
+            n_loaded = "Dimuat! Ikan >= 50 -> auto jual",
+            d_lang = "Bahasa",
+            d_lang_value = "Indonesia",
+            btn_lang_vi = "Tiếng Việt",
+            btn_lang_en = "English",
+            btn_lang_id = "Indonesia",
+        },
+    },
+}
+
+local function T(key)
+    local lang = Lang.texts[Lang.current] or Lang.texts.vi
+    return lang[key] or key
+end
+
 local Fish = {
 	dead = false,
 	running = false,
@@ -603,7 +887,7 @@ local function doSellFull()
 	end
 
 	if not npc then
-		WindUI:Notify({Title="Bán cá", Content="Không tìm thấy NPC bán cá", Duration=3})
+		WindUI:Notify({Title=T("n_sell"), Content=T("n_no_npc"), Duration=3})
 		SellBusy = false
 		if wasFarming then Fish.paused = false end
 		return false
@@ -682,7 +966,7 @@ local function doSellFull()
 	task.wait(0.3)
 
 	if wasFarming then Fish.paused = false end
-	WindUI:Notify({Title="Bán cá", Content= ok and ("Bán xong! +"..tostring(coin)) or "Bán xong!", Duration=2})
+	WindUI:Notify({Title=T("n_sell"), Content= ok and (T("n_sold")..tostring(coin)) or T("n_sold_ok"), Duration=2})
 	SellBusy = false
 	return true
 end
@@ -708,7 +992,7 @@ local function startAutoFull()
 			if SellBusy then continue end
 			local fish = countFishInBackpack()
 			if fish >= FISH_CAPACITY then
-				WindUI:Notify({Title="Bán cá", Content=("Kho đầy (%d/%d) - TỰ ĐỘNG BÁN"):format(fish, FISH_CAPACITY), Duration=2})
+				WindUI:Notify({Title=T("n_sell"), Content=T("n_full"):format(fish, FISH_CAPACITY), Duration=2})
 				doSellFull()
 				task.wait(3)
 			end
@@ -1002,9 +1286,9 @@ end
 
 local function teleIsland(n)
 	local i = findIsland(n)
-	if not i then WindUI:Notify({Title="Tele", Content="Không tìm thấy "..n, Duration=3}) return end
+	if not i then WindUI:Notify({Title=T("n_tele"), Content=T("n_no_island")..n, Duration=3}) return end
 	local sp = findSpawn(i)
-	if not sp then WindUI:Notify({Title="Tele", Content="Không có spawn", Duration=3}) return end
+	if not sp then WindUI:Notify({Title=T("n_tele"), Content=T("n_no_spawn"), Duration=3}) return end
 	tweenTo(CFrame.new(sp.Position + Vector3.new(0,5,0)))
 	task.wait(0.3)
 end
@@ -1197,10 +1481,10 @@ end
 local function teleToBoss()
 	local part = ActiveBoss.part
 	if not part or not part.Parent then
-		WindUI:Notify({Title="Boss", Content="Không có boss nào đang active", Duration=3})
+		WindUI:Notify({Title=T("n_boss"), Content=T("n_no_boss"), Duration=3})
 		return
 	end
-	WindUI:Notify({Title="Boss", Content="Đang tween tới boss "..tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?"), Duration=2})
+	WindUI:Notify({Title=T("n_boss"), Content=T("n_tween_boss")..tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?"), Duration=2})
 	tweenTo(CFrame.new(part.Position + Vector3.new(0, 8, 0)))
 	task.wait(0.3)
 end
@@ -1368,7 +1652,7 @@ local function bossStep()
 			store.holding = false
 			store.engaged = nil
 			store.step = "chờ"
-			WindUI:Notify({Title="Boss", Content="Đã tắt tự động câu boss", Duration=3})
+			WindUI:Notify({Title=T("n_boss"), Content=T("n_no_boss"), Duration=3})
 		end
 		return
 	end
@@ -1378,7 +1662,7 @@ local function bossStep()
 			store.holding = false
 			store.engaged = nil
 			store.step = "chờ"
-			WindUI:Notify({Title="Boss", Content="Boss biến mất, câu lại bình thường", Duration=3})
+			WindUI:Notify({Title=T("n_boss"), Content=T("n_no_boss"), Duration=3})
 		end
 		return
 	end
@@ -1390,7 +1674,7 @@ local function bossStep()
 		store.bankAt = -math.huge
 		store.fails = 0
 		store.step = "Thấy boss " .. tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?")
-		WindUI:Notify({Title="Boss", Content=store.step, Duration=4})
+		WindUI:Notify({Title=T("n_boss"), Content=store.step, Duration=4})
 	end
 	if store.engaged ~= ActiveBoss.id then
 		store.engaged = ActiveBoss.id
@@ -1447,7 +1731,7 @@ local function bossInfoText()
 		return "Boss ESP đang tắt"
 	end
 	if not ActiveBoss.part or not ActiveBoss.meta then
-		return "Không có boss nào đang active"
+		return T("n_no_boss")
 	end
 	local meta = ActiveBoss.meta
 	local islandName = ISLAND_LABELS[meta.islandId] or tostring(meta.islandId or "?")
@@ -1693,7 +1977,7 @@ local function applyAccent(library, value)
 end
 
 local Window = WindUI:CreateWindow({
-	Title = "DNHUB 2.0",
+	Title = T("window_title"),
 	Icon = "fish",
 	Author = "DN Team",
 	Folder = "DNHub",
@@ -1704,7 +1988,7 @@ local Window = WindUI:CreateWindow({
 	HideSearchBar = false,
 	Topbar = {Height=44, ButtonsType="Mac"},
 	OpenButton = {
-		Title = "DNHUB 2.0",
+		Title = T("window_title"),
 		Icon = "fish",
 		CornerRadius = UDim.new(1,0),
 		StrokeThickness = 2,
@@ -1714,24 +1998,24 @@ local Window = WindUI:CreateWindow({
 	},
 })
 
-local MainTab = Window:Tab({Title="Chính", Icon="user"})
-local TeleTab = Window:Tab({Title="Dịch chuyển", Icon="map-pin"})
-local PlrTab = Window:Tab({Title="Người chơi", Icon="users"})
-local BossTab = Window:Tab({Title="Boss", Icon="swords"})
-local MiscTab = Window:Tab({Title="Khác", Icon="settings"})
-local SettingsTab = Window:Tab({Title="Cài đặt", Icon="wrench"})
+local MainTab = Window:Tab({Title=T("tab_main"), Icon="user"})
+local TeleTab = Window:Tab({Title=T("tab_tele"), Icon="map-pin"})
+local PlrTab = Window:Tab({Title=T("tab_plr"), Icon="users"})
+local BossTab = Window:Tab({Title=T("tab_boss"), Icon="swords"})
+local MiscTab = Window:Tab({Title=T("tab_misc"), Icon="settings"})
+local SettingsTab = Window:Tab({Title=T("tab_settings"), Icon="wrench"})
 
 LP.Idled:Connect(function() pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end) end)
 task.spawn(function() while true do pcall(function() VU:CaptureController() VU:ClickButton2(Vector2.new()) end) task.wait(30) end end)
 
-local MGSection = MainTab:Section({Title="Tự động"})
-MGSection:Toggle({Title="Tự động câu", Default=st.fish, Callback=function(v) st.fish=v if v then startFish() else stopFish() end end})
-MGSection:Toggle({Title="Tự động kỹ năng", Default=st.skill, Callback=function(v) st.skill=v end})
-MGSection:Toggle({Title="Vượt Minigame", Default=st.bypass, Callback=function(v) st.bypass=v end})
+local MGSection = MainTab:Section({Title=T("sec_auto")})
+MGSection:Toggle({Title=T("t_auto_fish"), Default=st.fish, Callback=function(v) st.fish=v if v then startFish() else stopFish() end end})
+MGSection:Toggle({Title=T("t_auto_skill"), Default=st.skill, Callback=function(v) st.skill=v end})
+MGSection:Toggle({Title=T("t_bypass"), Default=st.bypass, Callback=function(v) st.bypass=v end})
 
-local SkillSection = MainTab:Section({Title="Thứ tự Skill"})
+local SkillSection = MainTab:Section({Title=T("sec_skill_order")})
 SkillSection:Input({
-	Title = "Thứ tự slot (1,2,3,4 - cách dấu phẩy)",
+	Title = T("b_skill_order"),
 	Value = table.concat(st.skillOrder or {1,2,1,3}, ","),
 	Placeholder = "1,2,1,3",
 	Callback = function(v)
@@ -1761,13 +2045,13 @@ SkillSection:Button({Title="Preset: V,C,X,Z", Callback=function()
 	SkillCycle.index = 1
 end})
 
-local SG2Section = MainTab:Section({Title="Bán cá"})
-SG2Section:Toggle({Title="Tự động bán", Default=st.sell, Callback=function(v) st.sell=v if v then startSell() end end})
-SG2Section:Toggle({Title="Bán nếu đầy kho", Default=st.autoSellFull, Callback=function(v) st.autoSellFull=v if v then startAutoFull() end end})
-SG2Section:Toggle({Title="Đi bộ tới NPC (thay tween)", Default=st.useWalk, Callback=function(v) st.useWalk=v end})
-SG2Section:Toggle({Title="Quay lại chỗ cũ sau khi bán", Default=st.returnAfterSell, Callback=function(v) st.returnAfterSell=v end})
+local SG2Section = MainTab:Section({Title=T("sec_sell")})
+SG2Section:Toggle({Title=T("t_auto_sell"), Default=st.sell, Callback=function(v) st.sell=v if v then startSell() end end})
+SG2Section:Toggle({Title=T("t_auto_full"), Default=st.autoSellFull, Callback=function(v) st.autoSellFull=v if v then startAutoFull() end end})
+SG2Section:Toggle({Title=T("t_walk_npc"), Default=st.useWalk, Callback=function(v) st.useWalk=v end})
+SG2Section:Toggle({Title=T("t_return_sell"), Default=st.returnAfterSell, Callback=function(v) st.returnAfterSell=v end})
 SG2Section:Dropdown({
-	Title = "Cách đi bán",
+	Title = T("d_sell_way"),
 	Values = {"Tween","Walk","Instant"},
 	Value = st.sellTravelMode or "Tween",
 	Callback = function(v)
@@ -1775,12 +2059,12 @@ SG2Section:Dropdown({
 		st.useWalk = (v == "Walk")
 	end,
 })
-SG2Section:Slider({Title="Thời gian (giây)", Value={Min=30,Max=3600,Default=sellInt}, Step=1, Callback=function(v) sellInt=v end})
-SG2Section:Button({Title="BÁN NGAY", Callback=function() task.spawn(doSellFull) end})
+SG2Section:Slider({Title=T("s_sell_int"), Value={Min=30,Max=3600,Default=sellInt}, Step=1, Callback=function(v) sellInt=v end})
+SG2Section:Button({Title=T("b_sell_now"), Callback=function() task.spawn(doSellFull) end})
 
-local LockSection = MainTab:Section({Title="Khoá Cá🔒"})
+local LockSection = MainTab:Section({Title=T("sec_lock")})
 LockSection:Toggle({
-	Title = "Bật tự khoá cá",
+	Title = T("t_auto_lock"),
 	Default = st.autoLock,
 	Callback = function(v)
 		st.autoLock = v
@@ -1800,7 +2084,7 @@ local function raritySetToArray(set)
 end
 
 LockSection:Dropdown({
-	Title = "Độ hiếm muốn khoá",
+	Title = T("d_rarity"),
 	Values = rarityList,
 	Multi = true,
 	AllowNone = true,
@@ -1816,11 +2100,11 @@ LockSection:Dropdown({
 	end
 })
 
-LockSection:Button({Title="Khoá ngay", Callback=function() task.spawn(autoLockPass) end})
+LockSection:Button({Title=T("b_lock_now"), Callback=function() task.spawn(autoLockPass) end})
 
-local TGSection = TeleTab:Section({Title="Đảo"})
+local TGSection = TeleTab:Section({Title=T("sec_island")})
 TGSection:Dropdown({
-	Title = "Chọn đảo",
+	Title = T("d_island"),
 	Values = ISLAND_DISPLAY,
 	Value = ISLAND_LABELS[island] or "Starter",
 	Callback = function(v)
@@ -1833,43 +2117,43 @@ TGSection:Dropdown({
 	end
 })
 TGSection:Dropdown({
-	Title = "Kiểu dịch chuyển",
+	Title = T("d_tp_mode"),
 	Values = {"Instant TP","Tween"},
 	Value = st.tpMode == "Tween" and "Tween" or "Instant TP",
 	Callback = function(v)
 		st.tpMode = (v == "Tween") and "Tween" or "Instant"
 	end,
 })
-TGSection:Button({Title="DỊCH CHUYỂN", Callback=function() teleIsland(island) end})
-TGSection:Toggle({Title="ESP Đảo", Default=st.esp, Callback=function(v) st.esp=v if v then startESP() else stopESP() end end})
-TGSection:Button({Title="Dừng bay", Callback=function()
+TGSection:Button({Title=T("b_tele"), Callback=function() teleIsland(island) end})
+TGSection:Toggle({Title=T("t_esp_island"), Default=st.esp, Callback=function(v) st.esp=v if v then startESP() else stopESP() end end})
+TGSection:Button({Title=T("b_stop_fly"), Callback=function()
 	Tweening = false
-	WindUI:Notify({Title="Tele", Content="Đã dừng bay", Duration=2})
+	WindUI:Notify({Title=T("n_tele"), Content=T("n_stop_fly"), Duration=2})
 end})
 TGSection:Slider({
-	Title = "Tốc độ bay",
+	Title = T("s_fly_speed"),
 	Value = {Min=20,Max=300,Default=st.flySpeed or 70},
 	Step = 1,
 	Callback = function(v) st.flySpeed = v end,
 })
 TGSection:Slider({
-	Title = "Đứng lại điểm đến (giây)",
+	Title = T("s_fly_pin"),
 	Value = {Min=0,Max=8,Default=st.flyPin or 3},
 	Step = 0.1,
 	Callback = function(v) st.flyPin = v end,
 })
 TGSection:Slider({
-	Title = "Nghỉ giữa 2 lần bay",
+	Title = T("s_tp_cd"),
 	Value = {Min=0,Max=90,Default=st.tpCooldown or 12},
 	Step = 1,
 	Callback = function(v) st.tpCooldown = v end,
 })
 
-local BossSection = BossTab:Section({Title="ESP Boss"})
-BossSection:Toggle({Title="ESP Part 1", Default=st.bossEsp1, Callback=function(v) st.bossEsp1=v end})
-BossSection:Toggle({Title="ESP Part 2", Default=st.bossEsp2, Callback=function(v) st.bossEsp2=v end})
-BossSection:Button({Title="Reset ESP", Callback=function() stopBossEsp() end})
-BossSection:Toggle({Title="Tự động câu Boss", Default=st.autoBoss, Callback=function(v)
+local BossSection = BossTab:Section({Title=T("sec_boss_esp")})
+BossSection:Toggle({Title=T("t_esp_boss1"), Default=st.bossEsp1, Callback=function(v) st.bossEsp1=v end})
+BossSection:Toggle({Title=T("t_esp_boss2"), Default=st.bossEsp2, Callback=function(v) st.bossEsp2=v end})
+BossSection:Button({Title=T("b_reset_esp"), Callback=function() stopBossEsp() end})
+BossSection:Toggle({Title=T("t_auto_boss"), Default=st.autoBoss, Callback=function(v)
 	st.autoBoss = v
 	if not v and BossStepState.holding then
 		BossStepState.holding = false
@@ -1877,15 +2161,15 @@ BossSection:Toggle({Title="Tự động câu Boss", Default=st.autoBoss, Callbac
 		BossStepState.step = "chờ"
 	end
 end})
-BossSection:Toggle({Title="Về chỗ câu sau khi boss xong", Default=st.bossReturn, Callback=function(v) st.bossReturn=v end})
+BossSection:Toggle({Title=T("t_boss_return"), Default=st.bossReturn, Callback=function(v) st.bossReturn=v end})
 
-local BossInfoSection = BossTab:Section({Title="Thông tin Boss"})
+local BossInfoSection = BossTab:Section({Title=T("sec_boss_info")})
 local bossInfoLabel = BossInfoSection:Paragraph({
-	Title = "Đang tải thông tin boss...",
+	Title = T("p_boss_info"),
 })
 
 BossInfoSection:Button({
-	Title = "Tele đến Boss",
+	Title = T("b_tele_boss"),
 	Callback = function()
 		task.spawn(teleToBoss)
 	end
@@ -1902,17 +2186,17 @@ task.spawn(function()
 	end
 end)
 
-local SpeedSection = PlrTab:Section({Title="Tốc độ"})
-SpeedSection:Toggle({Title="Bật tăng tốc", Default=st.speedOn, Callback=function(v) enableSpeed(v) end})
-SpeedSection:Slider({Title="Tốc độ (16-200)", Value={Min=16,Max=200,Default=st.speed}, Step=1, Callback=function(v) applySpeed(v) end})
-SpeedSection:Input({Title="Nhập số", Value=tostring(st.speed), Placeholder="36", Callback=function(v)
+local SpeedSection = PlrTab:Section({Title=T("sec_speed")})
+SpeedSection:Toggle({Title=T("t_speed"), Default=st.speedOn, Callback=function(v) enableSpeed(v) end})
+SpeedSection:Slider({Title=T("s_speed"), Value={Min=16,Max=200,Default=st.speed}, Step=1, Callback=function(v) applySpeed(v) end})
+SpeedSection:Input({Title=T("s_speed_num"), Value=tostring(st.speed), Placeholder="36", Callback=function(v)
 	local n = tonumber(v)
 	if n and n >= 16 and n <= 500 then applySpeed(n) end
 end})
 
-local FNSection = PlrTab:Section({Title="Fake Name"})
+local FNSection = PlrTab:Section({Title=T("sec_fakename")})
 FNSection:Toggle({
-	Title = "Bật Fake Name",
+	Title = T("t_fake"),
 	Default = st.fakename,
 	Callback = function(v)
 		st.fakename = v
@@ -1920,7 +2204,7 @@ FNSection:Toggle({
 	end
 })
 FNSection:Input({
-	Title = "Tên hiển thị",
+	Title = T("i_custom_name"),
 	Value = customName,
 	Placeholder = "Nhập tên...",
 	Callback = function(v)
@@ -1929,19 +2213,19 @@ FNSection:Input({
 	end
 })
 FNSection:Toggle({
-	Title = "Màu cầu vồng",
+	Title = T("t_rainbow"),
 	Default = st.tagRainbow,
 	Callback = function(v) setTagRainbow(v) end
 })
 FNSection:Colorpicker({
-	Title = "Màu tag",
+	Title = T("c_tag_color"),
 	Default = Color3.new(st.tagColorR or 0.7, st.tagColorG or 0.4, st.tagColorB or 1.0),
 	Callback = function(color) setTagColor(color.R, color.G, color.B) end
 })
 
-local AntiAfkSection = SettingsTab:Section({Title="Chống AFK"})
+local AntiAfkSection = SettingsTab:Section({Title=T("sec_antiafk")})
 AntiAfkSection:Toggle({
-	Title = "Bật chống AFK",
+	Title = T("t_antiafk"),
 	Default = st.antiAfk,
 	Callback = function(v)
 		st.antiAfk = v
@@ -1949,47 +2233,47 @@ AntiAfkSection:Toggle({
 	end
 })
 AntiAfkSection:Slider({
-	Title = "Khoảng thời gian (giây)",
+	Title = T("s_afk_int"),
 	Value = {Min=10,Max=300,Default=st.antiAfkInterval or 50},
 	Step = 1,
 	Callback = function(v) st.antiAfkInterval = v end,
 })
 AntiAfkSection:Dropdown({
-	Title = "Phím dự phòng",
+	Title = T("d_afk_key"),
 	Values = {"F13","F14","Numpad7","F15"},
 	Value = st.antiAfkKey or "F13",
 	Callback = function(v) st.antiAfkKey = v end,
 })
 
-local FishOptSection = SettingsTab:Section({Title="Tuỳ chọn câu"})
+local FishOptSection = SettingsTab:Section({Title=T("sec_fish_opt")})
 FishOptSection:Slider({
-	Title = "Kéo First Pull tới",
+	Title = T("s_first_pull"),
 	Value = {Min=0.8,Max=0.99,Default=st.firstPullTarget or 0.96},
 	Step = 0.01,
 	Callback = function(v) st.firstPullTarget = v end,
 })
 FishOptSection:Slider({
-	Title = "Giữ nút ném câu",
+	Title = T("s_cast_hold"),
 	Value = {Min=0.1,Max=1,Default=st.castHold or 0.65},
 	Step = 0.01,
 	Callback = function(v) st.castHold = v end,
 })
 FishOptSection:Slider({
-	Title = "Độ trễ QTE",
+	Title = T("s_qte_delay"),
 	Value = {Min=0,Max=0.6,Default=st.qteDelay or 0.2},
 	Step = 0.01,
 	Callback = function(v) st.qteDelay = v end,
 })
 FishOptSection:Slider({
-	Title = "Khoảng cách skill",
+	Title = T("s_skill_space"),
 	Value = {Min=0.1,Max=2,Default=st.skillSpacing or 0.35},
 	Step = 0.05,
 	Callback = function(v) st.skillSpacing = v end,
 })
 
-local ThemeSection = SettingsTab:Section({Title="Giao diện"})
+local ThemeSection = SettingsTab:Section({Title=T("sec_theme")})
 ThemeSection:Dropdown({
-	Title = "Bộ màu",
+	Title = T("d_theme"),
 	Values = {"Dark","Light","Rose","Ocean","Emerald"},
 	Value = st.uiTheme or "Dark",
 	Callback = function(v)
@@ -2006,19 +2290,44 @@ ThemeSection:Colorpicker({
 	end,
 })
 ThemeSection:Button({
-	Title = "Xóa màu tuỳ chỉnh",
+	Title = T("b_clear_accent"),
 	Callback = function()
 		st.uiAccent = ""
 		pcall(function() WindUI:SetTheme(st.uiTheme or "Dark") end)
-		WindUI:Notify({Title="Theme", Content="Đã xóa màu tuỳ chỉnh", Duration=2})
+		WindUI:Notify({Title=T("n_theme"), Content=T("n_no_accent"), Duration=2})
 	end,
 })
 
-local MiscSection = MiscTab:Section({Title="Đồ hoạ"})
-MiscSection:Toggle({Title="Giảm đồ hoạ (FPS cao)", Default=st.liteGfx, Callback=function(v) setLite(v) end})
+local LangSection = SettingsTab:Section({Title=T("sec_language")})
+LangSection:Dropdown({
+	Title = T("d_lang"),
+	Values = {T("btn_lang_vi"), T("btn_lang_en"), T("btn_lang_id")},
+	Value = T("d_lang_value"),
+	Callback = function(v)
+		local map = {
+			[T("btn_lang_vi")] = "vi",
+			[T("btn_lang_en")] = "en",
+			[T("btn_lang_id")] = "id",
+		}
+		local picked = map[v]
+		if not picked or picked == Lang.current then return end
+		WindUI:Notify({
+			Title = "Language",
+			Content = "Changing to: " .. tostring(v) .. "\nPlease rejoin or reload the script to apply.",
+			Duration = 5,
+		})
+		Lang.current = picked
+		pcall(function()
+			Window:Destroy()
+		end)
+	end,
+})
 
-local SysSection = MiscTab:Section({Title="Hệ thống"})
-SysSection:Button({Title="Tắt Menu", Callback=function()
+local MiscSection = MiscTab:Section({Title=T("sec_gfx")})
+MiscSection:Toggle({Title=T("t_lite"), Default=st.liteGfx, Callback=function(v) setLite(v) end})
+
+local SysSection = MiscTab:Section({Title=T("sec_system")})
+SysSection:Button({Title=T("b_kill_ui"), Callback=function()
 	st.fish=false st.bypass=false st.skill=false st.sell=false st.speedOn=false st.fakename=false st.autoSellFull=false st.esp=false
 	st.bossEsp1=false st.bossEsp2=false st.liteGfx=false st.autoLock=false st.autoBoss=false st.antiAfk=false
 	Fish.farm = false
@@ -2098,154 +2407,4 @@ LP.CharacterAdded:Connect(function(c)
 	if st.antiAfk then startAntiAfk() end
 end)
 
-WindUI:Notify({Title="DNHUB 2.0", Content="Đã load! Cá >= 50 -> tự động bán", Duration=5})
-
-local FishCounterUI = Instance.new("ScreenGui")
-FishCounterUI.Name = "DNHubFishCounter"
-FishCounterUI.ResetOnSpawn = false
-FishCounterUI.IgnoreGuiInset = true
-FishCounterUI.DisplayOrder = 9000
-FishCounterUI.Parent = PG
-
-local bubble = Instance.new("Frame")
-bubble.Name = "Bubble"
-bubble.AnchorPoint = Vector2.new(1, 0)
-bubble.Position = UDim2.new(1, -14, 0, 14)
-bubble.Size = UDim2.fromOffset(220, 92)
-bubble.BackgroundColor3 = Color3.fromRGB(14, 19, 31)
-bubble.BackgroundTransparency = 0.08
-bubble.BorderSizePixel = 0
-bubble.Parent = FishCounterUI
-
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 12)
-corner.Parent = bubble
-
-local stroke = Instance.new("UIStroke")
-stroke.Color = Color3.fromRGB(60, 74, 102)
-stroke.Thickness = 1
-stroke.Transparency = 0.3
-stroke.Parent = bubble
-
-local title = Instance.new("TextLabel")
-title.Name = "Title"
-title.Size = UDim2.new(1, -20, 0, 22)
-title.Position = UDim2.fromOffset(14, 8)
-title.BackgroundTransparency = 1
-title.Font = Enum.Font.GothamBold
-title.TextSize = 14
-title.TextColor3 = Color3.fromRGB(56, 189, 248)
-title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "DNHUB - KHO CA"
-title.Parent = bubble
-
-local line1 = Instance.new("TextLabel")
-line1.Name = "Line1"
-line1.Size = UDim2.new(1, -20, 0, 20)
-line1.Position = UDim2.fromOffset(14, 32)
-line1.BackgroundTransparency = 1
-line1.Font = Enum.Font.GothamMedium
-line1.TextSize = 14
-line1.TextColor3 = Color3.fromRGB(238, 244, 255)
-line1.TextXAlignment = Enum.TextXAlignment.Left
-line1.Text = "Ca: 0 / 50"
-line1.Parent = bubble
-
-local line2 = Instance.new("TextLabel")
-line2.Name = "Line2"
-line2.Size = UDim2.new(1, -20, 0, 18)
-line2.Position = UDim2.fromOffset(14, 56)
-line2.BackgroundTransparency = 1
-line2.Font = Enum.Font.Gotham
-line2.TextSize = 12
-line2.TextColor3 = Color3.fromRGB(172, 186, 210)
-line2.TextXAlignment = Enum.TextXAlignment.Left
-line2.Text = "Tong: 0 | Rod: 0"
-line2.Parent = bubble
-
-local barBg = Instance.new("Frame")
-barBg.Name = "BarBg"
-barBg.Size = UDim2.new(1, -28, 0, 4)
-barBg.Position = UDim2.new(0, 14, 1, -12)
-barBg.BackgroundColor3 = Color3.fromRGB(30, 41, 59)
-barBg.BorderSizePixel = 0
-barBg.Parent = bubble
-
-local barCorner = Instance.new("UICorner")
-barCorner.CornerRadius = UDim.new(1, 0)
-barCorner.Parent = barBg
-
-local barFill = Instance.new("Frame")
-barFill.Name = "Fill"
-barFill.Size = UDim2.fromScale(0, 1)
-barFill.BackgroundColor3 = Color3.fromRGB(56, 189, 248)
-barFill.BorderSizePixel = 0
-barFill.Parent = barBg
-
-local barFillCorner = Instance.new("UICorner")
-barFillCorner.CornerRadius = UDim.new(1, 0)
-barFillCorner.Parent = barFill
-
-local lastFish, lastTotal, lastRods = -1, -1, -1
-
-local function updateFishCounter()
-	local bp = LP:FindFirstChildOfClass("Backpack")
-	if not bp then
-		line1.Text = "Khong co Backpack"
-		line2.Text = ""
-		return
-	end
-	local total, fish, rods = 0, 0, 0
-	for _, item in ipairs(bp:GetChildren()) do
-		total = total + 1
-		if isRodItem(item) then
-			rods = rods + 1
-		else
-			fish = fish + 1
-		end
-	end
-	if fish == lastFish and total == lastTotal and rods == lastRods then
-		return
-	end
-	lastFish, lastTotal, lastRods = fish, total, rods
-	local cap = FISH_CAPACITY
-	line1.Text = string.format("Ca: %d / %d", fish, cap)
-	line2.Text = string.format("Tong: %d | Rod: %d", total, rods)
-	local ratio = cap > 0 and math.clamp(fish / cap, 0, 1) or 0
-	barFill.Size = UDim2.fromScale(ratio, 1)
-	if fish >= cap then
-		barFill.BackgroundColor3 = Color3.fromRGB(248, 113, 113)
-		line1.TextColor3 = Color3.fromRGB(248, 113, 113)
-	elseif ratio >= 0.8 then
-		barFill.BackgroundColor3 = Color3.fromRGB(251, 146, 60)
-		line1.TextColor3 = Color3.fromRGB(251, 146, 60)
-	else
-		barFill.BackgroundColor3 = Color3.fromRGB(56, 189, 248)
-		line1.TextColor3 = Color3.fromRGB(238, 244, 255)
-	end
-end
-
-updateFishCounter()
-
-local bpRef = LP:FindFirstChildOfClass("Backpack")
-if bpRef then
-	bpRef.ChildAdded:Connect(updateFishCounter)
-	bpRef.ChildRemoved:Connect(updateFishCounter)
-end
-
-LP.CharacterAdded:Connect(function()
-	task.wait(1)
-	local newBp = LP:FindFirstChildOfClass("Backpack")
-	if newBp then
-		newBp.ChildAdded:Connect(updateFishCounter)
-		newBp.ChildRemoved:Connect(updateFishCounter)
-	end
-	updateFishCounter()
-end)
-
-task.spawn(function()
-	while FishCounterUI.Parent do
-		task.wait(0.5)
-		updateFishCounter()
-	end
-end)
+WindUI:Notify({Title=T("window_title"), Content=T("n_loaded"), Duration=5}
