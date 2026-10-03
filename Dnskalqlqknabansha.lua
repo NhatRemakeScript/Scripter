@@ -10,7 +10,6 @@ local VU = game:GetService("VirtualUser")
 local RunService = game:GetService("RunService")
 local Collection = game:GetService("CollectionService")
 local Pathfinding = game:GetService("PathfindingService")
-local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 local LP = P.LocalPlayer
 local PG = LP:WaitForChild("PlayerGui")
@@ -19,8 +18,11 @@ local C = {
     ISLAND_ORDER = {"starter","jungle","desert","snow","volcano","fossil"},
     ISLAND_DISPLAY = {"Starter","Jungle","Desert","Snow","Volcano","Fossil"},
     ISLAND_LABELS = {starter="Starter", jungle="Jungle", desert="Desert", snow="Snow", volcano="Volcano", fossil="Fossil"},
+    ISLAND_IDS = {starter="island_starter", jungle="island_jungle", desert="island_desert", snow="island_snow", volcano="island_volcano", fossil="island_fossil"},
     MAIN_PARTS = {"HumanoidRootPart", "Torso", "UpperTorso", "LowerTorso", "Head"},
     FISH_CAPACITY = 50,
+    BOSS_TWEEN_SPEED = 36,
+    EVENT_EMISSION_NAMES = {Rain=true, Rain2=true, rainbow=true, ParticleEmitter=true},
 }
 
 local S = {
@@ -624,6 +626,7 @@ local function runFishLoop()
         if Fish.paused then task.wait(0.1) continue end
         if Tweening then task.wait(0.1) continue end
         if SellBusy then task.wait(0.1) continue end
+        if BossStepState and BossStepState.holding then task.wait(0.1) continue end
         if not LP.Character then task.wait(0.2) continue end
         if not heldRodId() and os.clock() - Fish.lastEquip >= S.equipDelay then
             Fish.lastEquip = os.clock()
@@ -778,28 +781,88 @@ local function autoLockPass()
     end)
 end
 
-local function findIsland(n)
-    local t = "island_"..n
-    for _, o in ipairs(workspace:GetDescendants()) do if o.Name:lower()==t then return o end end
+-- FIND ISLAND VIA CollectionService "Island" tag with attribute "islandId"
+local function findIslandById(islandId)
+    for _, inst in ipairs(Collection:GetTagged("IslandRegion")) do
+        if inst:IsA("BasePart") and inst:GetAttribute("islandId") == islandId then
+            return inst
+        end
+    end
+    -- fallback: search World.Islands
+    local world = workspace:FindFirstChild("World")
+    local islands = world and world:FindFirstChild("Islands")
+    if islands then
+        for _, child in ipairs(islands:GetChildren()) do
+            if child.Name == islandId then return child end
+            if child:GetAttribute("islandId") == islandId then return child end
+        end
+    end
+    return nil
 end
 
-local function findSpawn(i)
-    if not i then return nil end
-    for _, d in ipairs(i:GetDescendants()) do if d:IsA("SpawnLocation") then return d end end
-    for _, d in ipairs(i:GetDescendants()) do if d:IsA("BasePart") and d.Name:lower():find("spawn") then return d end end
-    if i:IsA("Model") and i.PrimaryPart then return i.PrimaryPart end
-    for _, d in ipairs(i:GetChildren()) do if d:IsA("BasePart") then return d end end
+-- FIND SPAWN POINT of an island: SpawnLocation first, then "SpawnPoint" model, then "Spawners" folder parts
+local function findSpawnPoint(island)
+    if not island then return nil end
+    -- 1. direct SpawnLocation
+    for _, d in ipairs(island:GetDescendants()) do
+        if d:IsA("SpawnLocation") and d.Enabled ~= false then return d end
+    end
+    -- 2. Model/Folder named SpawnPoint or SpawnPoints
+    for _, d in ipairs(island:GetDescendants()) do
+        local n = string.lower(d.Name)
+        if (d:IsA("Model") or d:IsA("Folder")) and (n == "spawnpoint" or n == "spawnpoints" or n == "spawn") then
+            local part = d:FindFirstChildWhichIsA("BasePart", true)
+            if part then return part end
+        end
+    end
+    -- 3. Folder named Spawners -> random part
+    for _, d in ipairs(island:GetDescendants()) do
+        local n = string.lower(d.Name)
+        if (d:IsA("Model") or d:IsA("Folder")) and (n == "spawners" or n == "spawner") then
+            local parts = {}
+            for _, p in ipairs(d:GetChildren()) do
+                if p:IsA("BasePart") then table.insert(parts, p) end
+            end
+            if #parts > 0 then
+                return parts[math.random(1, #parts)]
+            end
+        end
+    end
+    -- 4. fallback: any part with "spawn" in name
+    for _, d in ipairs(island:GetDescendants()) do
+        if d:IsA("BasePart") and string.lower(d.Name):find("spawn") then return d end
+    end
+    return nil
 end
 
-local function teleIsland(n)
-    local i = findIsland(n)
-    if not i then WindUI:Notify({Title="Teleport", Content="Not found: "..n, Duration=3}) return end
-    local sp = findSpawn(i)
-    if not sp then WindUI:Notify({Title="Teleport", Content="No spawn", Duration=3}) return end
-    tweenTo(CFrame.new(sp.Position + Vector3.new(0,5,0)))
+local function findIslandNameByKey(key)
+    return C.ISLAND_IDS[key] or key
+end
+
+local function getIslandKeyFromId(id)
+    for k, v in pairs(C.ISLAND_IDS) do
+        if v == id then return k end
+    end
+    return id
+end
+
+local function teleIsland(key)
+    local islandId = findIslandNameByKey(key)
+    local island = findIslandById(islandId)
+    if not island then
+        WindUI:Notify({Title="Teleport", Content="Island not found: "..tostring(islandId), Duration=3})
+        return
+    end
+    local sp = findSpawnPoint(island)
+    if not sp then
+        WindUI:Notify({Title="Teleport", Content="No spawn point on: "..tostring(islandId), Duration=3})
+        return
+    end
+    tweenTo(CFrame.new(sp.Position + Vector3.new(0,5,0)), C.BOSS_TWEEN_SPEED)
     task.wait(0.3)
 end
 
+-- ESP: hiện spawn point của mỗi đảo
 local espF, espC
 local function clearESP()
     if espF then pcall(function() espF:Destroy() end) espF=nil end
@@ -809,25 +872,27 @@ end
 local function startESP()
     clearESP()
     espF = Instance.new("Folder") espF.Name="DNHub_ESP" espF.Parent=workspace
-    for _, name in ipairs(C.ISLAND_ORDER) do
-        local isl = findIsland(name)
-        if isl then
-            local part = findSpawn(isl)
-            if part then
+    for _, key in ipairs(C.ISLAND_ORDER) do
+        local islandId = C.ISLAND_IDS[key]
+        local island = findIslandById(islandId)
+        if island then
+            local sp = findSpawnPoint(island)
+            if sp then
                 local lb = Instance.new("BillboardGui")
-                lb.Size = UDim2.new(0,200,0,40)
+                lb.Name = "DNHubESP_"..islandId
+                lb.Size = UDim2.new(0,220,0,50)
                 lb.StudsOffset = Vector3.new(0,20,0)
                 lb.AlwaysOnTop = true
-                lb.Adornee = part
+                lb.Adornee = sp
                 lb.Parent = espF
                 local tx = Instance.new("TextLabel")
                 tx.Size = UDim2.new(1,0,1,0)
                 tx.BackgroundTransparency = 1
-                tx.Text = C.ISLAND_LABELS[name] or isl.Name
+                tx.Text = C.ISLAND_LABELS[key] .. "\n(" .. islandId .. ")"
                 tx.TextColor3 = Color3.fromRGB(255,255,255)
                 tx.TextStrokeColor3 = Color3.fromRGB(0,0,0)
                 tx.TextStrokeTransparency = 0
-                tx.TextSize = 18
+                tx.TextSize = 16
                 tx.Font = Enum.Font.GothamBold
                 tx.Parent = lb
             end
@@ -968,15 +1033,36 @@ local function teleToBoss()
         return
     end
     WindUI:Notify({Title="Boss", Content="Tweening to boss "..tostring(ActiveBoss.meta and ActiveBoss.meta.name or "?"), Duration=2})
-    tweenTo(CFrame.new(part.Position + Vector3.new(0, 8, 0)))
+    tweenTo(CFrame.new(part.Position + Vector3.new(0, 8, 0)), C.BOSS_TWEEN_SPEED)
     task.wait(0.3)
 end
 
+-- NEW AUTO BOSS: detect Event via Rain/Rain2/rainbow/ParticleEmitter Enabled
 local BossStepState = {
-    holding = false, engaged = nil, bank = nil, bankFor = nil,
-    bankAt = -math.huge, fails = 0, step = "Idle",
-    savedSpot = nil, savedIsland = nil, phase = "idle",
+    holding = false,
+    event = false,
+    savedCf = nil,
+    savedIsland = nil,
+    bank = nil,
+    bankFor = nil,
+    bankAt = -math.huge,
+    fails = 0,
+    step = "Idle",
+    phase = "idle",
+    wasFishing = false,
 }
+
+-- Detect if there's an active event (Emission Enabled of Rain, Rain2, rainbow, ParticleEmitter)
+local function detectActiveEvent()
+    for _, inst in ipairs(workspace:GetDescendants()) do
+        if inst:IsA("ParticleEmitter") then
+            if C.EVENT_EMISSION_NAMES[inst.Name] and inst.Enabled then
+                return true, inst
+            end
+        end
+    end
+    return false, nil
+end
 
 local function bossGround(islandId)
     local waterY = 3
@@ -1134,19 +1220,30 @@ local function bossGetCurrentIsland()
     return id
 end
 
-local function bossTeleportToStarter()
-    teleIsland("starter")
-    task.wait(1)
+local function bossFaceBoss(regionPart)
+    local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+    if not root or not regionPart or not regionPart.Parent then return end
+    local face = Vector3.new(regionPart.Position.X, root.Position.Y, regionPart.Position.Z)
+    pcall(function() root.CFrame = CFrame.lookAt(root.Position, face) end)
 end
 
-local function bossTeleportBack(saved)
-    if not saved then return end
-    local id = saved.id or ""
-    if id ~= "" and id ~= bossGetCurrentIsland() then
-        pcall(function() teleIsland(id:gsub("^island_", "")) end)
-        task.wait(1)
+local function bossRestore()
+    local store = BossStepState
+    if store.savedIsland and store.savedIsland ~= "" and store.savedIsland ~= bossGetCurrentIsland() then
+        local key = getIslandKeyFromId(store.savedIsland)
+        teleIsland(key)
+        task.wait(0.5)
     end
-    if saved.cf then tweenTo(saved.cf, 60) end
+    if store.savedCf then
+        tweenTo(store.savedCf, C.BOSS_TWEEN_SPEED)
+        task.wait(0.3)
+        local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
+        if root then
+            pcall(function() root.CFrame = store.savedCf end)
+        end
+    end
+    store.savedCf = nil
+    store.savedIsland = nil
 end
 
 local function bossStep()
@@ -1154,58 +1251,74 @@ local function bossStep()
     if not S.autoBoss then
         if store.holding then
             store.holding = false
-            store.engaged = nil
+            store.event = false
             store.step = "Idle"
             store.phase = "idle"
-            bossTeleportBack(store.savedSpot)
-            store.savedSpot = nil
+            bossRestore()
+            if store.wasFishing then
+                Fish.paused = false
+                store.wasFishing = false
+            end
         end
         return
     end
-    local part = ActiveBoss.part
-    if not part or not part.Parent then
+    -- Detect event via Rain/Rain2/rainbow/ParticleEmitter Enabled
+    local hasEvent = detectActiveEvent()
+    if not hasEvent then
         if store.holding then
             store.holding = false
-            store.engaged = nil
-            store.step = "Idle"
+            store.event = false
+            store.step = "Event ended - returning"
             store.phase = "idle"
-            bossTeleportBack(store.savedSpot)
-            store.savedSpot = nil
+            bossRestore()
+            if store.wasFishing then
+                Fish.paused = false
+                store.wasFishing = false
+            end
         end
         return
     end
+    -- Event active
     if not store.holding then
         store.holding = true
-        store.engaged = ActiveBoss.id
+        store.event = true
         store.bank = nil
         store.bankFor = nil
         store.bankAt = -math.huge
         store.fails = 0
         store.phase = "saving"
-        store.step = "Saving spot and going to starter"
+        store.step = "Event detected - saving position"
         local c = LP.Character
         if c then
             local r = c:FindFirstChild("HumanoidRootPart")
-            if r then store.savedSpot = {cf = r.CFrame, id = bossGetCurrentIsland()} end
+            if r then
+                store.savedCf = r.CFrame
+                store.savedIsland = bossGetCurrentIsland()
+            end
         end
-    end
-    if not Fish.farm then
-        store.step = "Enable Auto Fish"
-        return
+        store.wasFishing = Fish.farm
+        Fish.paused = true
     end
     if store.phase == "saving" then
-        bossTeleportToStarter()
+        store.step = "Moving to Starter"
+        teleIsland("starter")
+        task.wait(0.5)
         store.phase = "traveling"
         return
     end
     if store.phase == "traveling" then
-        store.step = "Moving to boss spot"
+        store.step = "Moving to boss bank"
+        local part = ActiveBoss.part
+        if not part or not part.Parent then
+            store.step = "Waiting for boss region..."
+            return
+        end
         if store.bank == nil or store.bankFor ~= part or os.clock() - store.bankAt >= 20 then
             local found, cancelled = bossScanBank(part, ActiveBoss.meta and ActiveBoss.meta.islandId, function() return S.autoBoss end)
             if cancelled then return end
             if not found then
                 store.fails = (store.fails or 0) + 1
-                if store.fails >= 3 then store.step = "No dry spot near boss, waiting" task.wait(3) end
+                if store.fails >= 3 then store.step = "No dry spot, waiting" task.wait(3) end
                 return
             end
             store.fails = 0
@@ -1218,19 +1331,22 @@ local function bossStep()
         local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if not root then return end
         local distance = (root.Position - bank.Position).Magnitude
-        if distance > 4 then
-            tweenTo(bank, 60)
+        if distance > 6 then
+            tweenTo(bank, C.BOSS_TWEEN_SPEED)
         else
             store.phase = "fishing"
+            store.step = "Arrived at boss bank"
+            if store.wasFishing then
+                Fish.paused = false
+            end
         end
         return
     end
     if store.phase == "fishing" then
-        store.step = "Fishing boss"
-        local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
-        if root then
-            local face = Vector3.new(part.Position.X, root.Position.Y, part.Position.Z)
-            pcall(function() root.CFrame = CFrame.lookAt(root.Position, face) end)
+        store.step = "Farming boss"
+        local part = ActiveBoss.part
+        if part and part.Parent then
+            bossFaceBoss(part)
         end
         return
     end
@@ -1240,9 +1356,9 @@ task.spawn(function()
     while true do
         if S.bossEsp1 or S.bossEsp2 or S.autoBoss then
             pcall(bossEsp)
-            if S.autoBoss then pcall(bossStep) end
         end
-        task.wait(1.5)
+        if S.autoBoss then pcall(bossStep) end
+        task.wait(1)
     end
 end)
 
@@ -1536,11 +1652,14 @@ do
             S.autoBoss = v
             if not v and BossStepState.holding then
                 BossStepState.holding = false
-                BossStepState.engaged = nil
+                BossStepState.event = false
                 BossStepState.step = "Idle"
                 BossStepState.phase = "idle"
-                bossTeleportBack(BossStepState.savedSpot)
-                BossStepState.savedSpot = nil
+                bossRestore()
+                if BossStepState.wasFishing then
+                    Fish.paused = false
+                    BossStepState.wasFishing = false
+                end
             end
         end})
     sec:Button({Title = "Teleport to Boss", Callback = function() task.spawn(teleToBoss) end})
